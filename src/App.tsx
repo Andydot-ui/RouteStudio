@@ -56,7 +56,7 @@ function App() {
   const undo = () => { if (historyIndex <= 0) return; const next = historyIndex - 1; setHistoryIndex(next); setDraft(cloneDraft(history[next])) }
   const redo = () => { if (historyIndex >= history.length - 1) return; const next = historyIndex + 1; setHistoryIndex(next); setDraft(cloneDraft(history[next])) }
   const setSelected = (index: number | null) => setDraft((current) => ({ ...current, selectedIndex: index }))
-  const addPoint = (point: LngLat) => { const now = Date.now(); if (now - lastDrawTime.current < 90) return; lastDrawTime.current = now; commit({ ...draft, importedWaypoints: undefined, input: [...draft.input, point], selectedIndex: draft.input.length }); setDrawing(draft.kind === 'line' || draft.kind === 'corridor' || draft.kind === 'grid' || draft.kind === 'oblique' || draft.kind === 'orbit' ? false : true) }
+  const addPoint = (point: LngLat) => { const now = Date.now(); if (now - lastDrawTime.current < 90) return; lastDrawTime.current = now; commit({ ...draft, importedWaypoints: undefined, input: [...draft.input, point], selectedIndex: draft.input.length }) }
   const setInput = (points: LngLat[]) => commit({ ...draft, importedWaypoints: undefined, input: points })
   const removeInput = (index: number) => commit({ ...draft, importedWaypoints: undefined, input: draft.input.filter((_, itemIndex) => itemIndex !== index), selectedIndex: null })
   const undoDrawing = () => { if (historyIndex > 0) undo(); else postToast('没有可撤销的绘制操作', 'info') }
