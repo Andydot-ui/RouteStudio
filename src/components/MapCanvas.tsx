@@ -64,6 +64,7 @@ export function MapCanvas({
   const callbacksRef = useRef({ onAddPoint, onSetInput, onSelectInput, onLocate, onMapReady })
   const draftRef = useRef(draft)
   const drawingRef = useRef(drawing)
+  const mapReadyRef = useRef(false)
 
   useEffect(() => {
     callbacksRef.current = { onAddPoint, onSetInput, onSelectInput, onLocate, onMapReady }
@@ -71,20 +72,23 @@ export function MapCanvas({
     drawingRef.current = drawing
   })
 
+  // Initialize Leaflet exactly once. Map state must never be coupled to route data.
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    const initialCenter: LngLat = draft.input[0] ?? [113.66425, 34.8298]
+    const initialCenter: LngLat = draftRef.current.input[0] ?? [113.66425, 34.8298]
     const map = L.map(host, {
       zoomControl: false,
       attributionControl: true,
       preferCanvas: true,
+      closePopupOnClick: false,
     }).setView([initialCenter[1], initialCenter[0]], 17)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
     L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map)
-    const baseLayer = L.tileLayer(BASE_LAYERS[baseMap].url, {
-      attribution: BASE_LAYERS[baseMap].attribution,
-      maxZoom: BASE_LAYERS[baseMap].maxZoom,
+
+    const baseLayer = L.tileLayer(BASE_LAYERS.satellite.url, {
+      attribution: BASE_LAYERS.satellite.attribution,
+      maxZoom: BASE_LAYERS.satellite.maxZoom,
       crossOrigin: true,
     }).addTo(map)
     const renderLayer = L.layerGroup().addTo(map)
@@ -98,18 +102,60 @@ export function MapCanvas({
     map.on('dblclick', (event: L.LeafletMouseEvent) => {
       L.DomEvent.preventDefault(event.originalEvent)
     })
-    const timeout = window.setTimeout(() => {
+
+    // Middle mouse and right mouse drag pan the canvas. The native context menu is
+    // suppressed only while dragging on the map, leaving markers fully usable.
+    let rightDown = false
+    let lastX = 0
+    let lastY = 0
+    host.addEventListener('contextmenu', (event) => event.preventDefault())
+    host.addEventListener('mousedown', (event) => {
+      if (event.button === 1 || event.button === 2) {
+        event.preventDefault()
+        rightDown = true
+        lastX = event.clientX
+        lastY = event.clientY
+        map.dragging.disable()
+        host.classList.add('is-panning')
+      }
+    })
+    host.addEventListener('mousemove', (event) => {
+      if (!rightDown) return
+      if (Math.abs(event.clientX - lastX) + Math.abs(event.clientY - lastY) < 1) return
+      map.dragging.disable()
+      map.panBy([lastX - event.clientX, lastY - event.clientY], { animate: false })
+      lastX = event.clientX
+      lastY = event.clientY
+    })
+    const stopPanning = () => {
+      if (!rightDown) return
+      rightDown = false
+      map.dragging.enable()
+      host.classList.remove('is-panning')
+    }
+    host.addEventListener('mouseup', stopPanning)
+    host.addEventListener('mouseleave', stopPanning)
+
+    const initialCenterPoint = L.latLng(initialCenter[1], initialCenter[0])
+    const fitSavedRoute = () => {
       map.invalidateSize()
+      const points = draftRef.current.input
+      if (points.length > 1) {
+        map.fitBounds(L.latLngBounds(points.map((point) => [point[1], point[0]] as L.LatLngTuple)).pad(0.25), { animate: false })
+      } else {
+        map.setView(initialCenterPoint, 17, { animate: false })
+      }
+      mapReadyRef.current = true
       callbacksRef.current.onMapReady?.()
-    }, 80)
+    }
+    window.setTimeout(fitSavedRoute, 80)
 
     return () => {
-      window.clearTimeout(timeout)
       map.off()
       map.remove()
       stateRef.current = null
     }
-  }, [baseMap, draft.input])
+  }, [])
 
   useEffect(() => {
     const state = stateRef.current
@@ -119,6 +165,9 @@ export function MapCanvas({
       attribution: next.attribution,
       maxZoom: next.maxZoom,
       crossOrigin: true,
+      keepBuffer: 5,
+      updateWhenIdle: false,
+      updateWhenZooming: true,
     })
     state.map.addLayer(layer)
     state.map.removeLayer(state.baseLayer)
@@ -128,16 +177,9 @@ export function MapCanvas({
 
   useEffect(() => {
     const state = stateRef.current
-    if (!state || !draft.input.length) return
-    const bounds = L.latLngBounds(draft.input.map((point) => [point[1], point[0]] as L.LatLngTuple))
-    if (bounds.isValid()) {
-      state.map.fitBounds(bounds.pad(0.38), {
-        animate: true,
-        duration: 0.45,
-        maxZoom: draft.kind === 'orbit' ? 17 : 18,
-      })
-    }
-  }, [draft.kind, draft.input])
+    if (!state || !mapReadyRef.current) return
+    state.map.invalidateSize({ pan: false, animate: false })
+  }, [draft.input.length])
 
   useEffect(() => {
     const state = stateRef.current
@@ -176,7 +218,6 @@ export function MapCanvas({
         interactive: false,
       }).addTo(state.renderLayer)
     }
-
     result.legs.forEach((leg, legIndex) => {
       if (leg.points.length > 1) {
         const latlngs = leg.points.map((point) => [point[1], point[0]] as L.LatLngTuple)
@@ -193,14 +234,11 @@ export function MapCanvas({
         }).addTo(state.renderLayer)
       }
     })
-
     const every = Math.max(1, Math.ceil(result.waypoints.length / 180))
     const showCameraViews = showCamera && result.waypoints.length <= 80
     result.waypoints.forEach((point, index) => {
       if (index % every !== 0 && !point.takePhoto) return
-      const camera = showCameraViews && point.takePhoto
-        ? '<div class="camera-view"></div>'
-        : ''
+      const camera = showCameraViews && point.takePhoto ? '<div class="camera-view"></div>' : ''
       L.marker([point.lat, point.lon], {
         interactive: false,
         zIndexOffset: point.takePhoto ? 100 : 0,
@@ -212,7 +250,6 @@ export function MapCanvas({
         }),
       }).addTo(state.renderLayer)
     })
-    state.map.invalidateSize()
   }, [draft.kind, draft.input, draft.settings.orbitRadius, result, showNumbers, showCamera])
 
   useEffect(() => {

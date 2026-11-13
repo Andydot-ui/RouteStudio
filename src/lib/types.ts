@@ -10,7 +10,7 @@ export type Point2D = { lon: number; lat: number }
 
 export type LngLat = [number, number]
 
-export type DroneId = 'mini4pro' | 'air3s' | 'mavic3e' | 'mavic3m' | 'custom'
+export type DroneId = string
 
 export type CameraProfile = {
   id: DroneId
@@ -23,6 +23,10 @@ export type CameraProfile = {
   maxFlightHeight: number
   droneEnumValue: number
   subtitle: string
+  family: 'consumer' | 'enterprise'
+  waypoint: 'native' | 'limited'
+  exportMode: 'exact' | 'generic'
+  supportNote?: string
 }
 
 export type Waypoint = Point2D & {

@@ -199,7 +199,8 @@ export function buildWaylinesXml(
   settings: PlannerSettings,
   name: string,
 ) {
-  const camera = CAMERA_MAP[settings.drone] ?? CAMERA_MAP.custom
+  const selectedCamera = CAMERA_MAP[settings.drone] ?? CAMERA_MAP.custom
+  const camera = selectedCamera.exportMode === 'exact' ? selectedCamera : CAMERA_MAP.custom
   const waypoints = result.waypoints
   const speed = Math.max(1, settings.speed)
   const placemarks = waypoints
@@ -289,7 +290,8 @@ export function buildWaylinesXml(
 }
 
 export function buildTemplateXml(settings: PlannerSettings) {
-  const camera = CAMERA_MAP[settings.drone] ?? CAMERA_MAP.custom
+   const selectedCamera = CAMERA_MAP[settings.drone] ?? CAMERA_MAP.custom
+  const camera = selectedCamera.exportMode === 'exact' ? selectedCamera : CAMERA_MAP.custom
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="${KML_NS}" xmlns:wpml="${WPML_NS}">
     <Document>

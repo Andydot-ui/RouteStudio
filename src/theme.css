@@ -69,6 +69,9 @@
 :root[data-theme=dark] .camera-menu>button:hover,:root[data-theme=dark] .camera-menu>button.is-selected{background:#263d2c}
 :root[data-theme=dark] .camera-menu strong{color:#d5e9dc}
 :root[data-theme=dark] .camera-menu small{color:#8da196}
+:root[data-theme=dark] .camera-group-title{color:#86a08f}
+:root[data-theme=dark] .waypoint-cap{color:#a4d5af;background:#293f2e}
+:root[data-theme=dark] .waypoint-cap.limited{color:#dfba73;background:#3b3020}
 :root[data-theme=dark] .check-row{color:#9db2a4}
 :root[data-theme=dark] .checkbox-ui{background:#17251d;border-color:#557261}
 :root[data-theme=dark] .check-row input:checked+.checkbox-ui{background:#68aa7c;border-color:#68aa7c}

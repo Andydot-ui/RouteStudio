@@ -77,66 +77,137 @@ export const PLANNER_DEFS: PlannerDefinition[] = [
 
 export const CAMERAS: CameraProfile[] = [
   {
-    id: 'mini4pro',
-    name: 'DJI Mini 4 Pro',
-    subtitle: '轻量航拍 · 1/1.3 英寸传感器',
-    sensorWidth: 9.6,
-    sensorHeight: 7.2,
-    focalLength: 6.72,
-    imageWidth: 4032,
-    imageHeight: 3024,
-    maxFlightHeight: 500,
-    droneEnumValue: 68,
+    id: 'mavic4pro', name: 'DJI Mavic 4 Pro', subtitle: '三摄旗舰 · 1 亿像素主摄',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 10000, imageHeight: 7500,
+    maxFlightHeight: 500, droneEnumValue: 100, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
-    id: 'air3s',
-    name: 'DJI Air 3S',
-    subtitle: '双摄航测 · 1 英寸主摄',
-    sensorWidth: 13.2,
-    sensorHeight: 8.8,
-    focalLength: 8.8,
-    imageWidth: 5472,
-    imageHeight: 3648,
-    maxFlightHeight: 500,
-    droneEnumValue: 77,
+    id: 'mavic3pro', name: 'DJI Mavic 3 Pro', subtitle: '三摄航拍 · 4/3 CMOS',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
-    id: 'mavic3e',
-    name: 'DJI Mavic 3E',
-    subtitle: '专业测绘 · 机械快门',
-    sensorWidth: 17.3,
-    sensorHeight: 13,
-    focalLength: 12.29,
-    imageWidth: 5280,
-    imageHeight: 3956,
-    maxFlightHeight: 500,
-    droneEnumValue: 66,
+    id: 'mavic3classic', name: 'DJI Mavic 3 Classic', subtitle: '经典航拍 · 4/3 CMOS',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
-    id: 'mavic3m',
-    name: 'DJI Mavic 3M',
-    subtitle: '多光谱 · 农业巡检',
-    sensorWidth: 17.3,
-    sensorHeight: 13,
-    focalLength: 12.29,
-    imageWidth: 5280,
-    imageHeight: 3956,
-    maxFlightHeight: 500,
-    droneEnumValue: 67,
+    id: 'mini5pro', name: 'DJI Mini 5 Pro', subtitle: '轻量航拍 · 1 英寸传感器',
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 8192, imageHeight: 6144,
+    maxFlightHeight: 500, droneEnumValue: 100, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
-    id: 'custom',
-    name: '通用 DJI 航点',
-    subtitle: '使用通用 WPML 飞机标识',
-    sensorWidth: 13.2,
-    sensorHeight: 8.8,
-    focalLength: 8.8,
-    imageWidth: 4000,
-    imageHeight: 3000,
-    maxFlightHeight: 500,
-    droneEnumValue: 68,
+    id: 'mini4pro', name: 'DJI Mini 4 Pro', subtitle: '轻量航拍 · 1/1.3 英寸传感器',
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    maxFlightHeight: 500, droneEnumValue: 68, family: 'consumer', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'mini4k', name: 'DJI Mini 4K', subtitle: '入门航拍 · 1/2.3 英寸传感器',
+    sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 24, imageWidth: 3840, imageHeight: 2160,
+    maxFlightHeight: 500, droneEnumValue: 68, family: 'consumer', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'air3s', name: 'DJI Air 3S', subtitle: '双摄航测 · 1 英寸主摄',
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 8192, imageHeight: 6144,
+    maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'air3', name: 'DJI Air 3', subtitle: '双摄航拍 · 1/1.3 英寸主摄',
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'phantom4pro', name: 'DJI Phantom 4 Pro', subtitle: '经典航点平台 · 1 英寸传感器',
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 5472, imageHeight: 3648,
+    maxFlightHeight: 500, droneEnumValue: 60, family: 'consumer', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'phantom4rtk', name: 'DJI Phantom 4 RTK', subtitle: '经典测绘平台 · RTK',
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 5472, imageHeight: 3648,
+    maxFlightHeight: 500, droneEnumValue: 60, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'zeppelin', name: 'DJI Zeppelin', subtitle: '系留航拍平台 · 广角主摄',
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 8192, imageHeight: 6144,
+    maxFlightHeight: 500, droneEnumValue: 100, family: 'consumer', waypoint: 'limited', exportMode: 'generic',
+  },
+  {
+    id: 'inspire3', name: 'DJI Inspire 3', subtitle: '专业影视 · 全画幅 8K',
+    sensorWidth: 36, sensorHeight: 24, focalLength: 35, imageWidth: 8192, imageHeight: 5460,
+    maxFlightHeight: 500, droneEnumValue: 89, family: 'consumer', waypoint: 'limited', exportMode: 'generic',
+  },
+  {
+    id: 'mavic3e', name: 'DJI Mavic 3E', subtitle: '行业测绘 · 机械快门',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    maxFlightHeight: 500, droneEnumValue: 66, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'mavic3t', name: 'DJI Mavic 3T', subtitle: '行业巡检 · 热成像',
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    maxFlightHeight: 500, droneEnumValue: 67, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'mavic3m', name: 'DJI Mavic 3M', subtitle: '行业多光谱 · 农业巡检',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    maxFlightHeight: 500, droneEnumValue: 67, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice4e', name: 'DJI Matrice 4E', subtitle: '行业测绘 · 三摄广角测绘',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice4t', name: 'DJI Matrice 4T', subtitle: '行业巡检 · 热成像与夜视',
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice4d', name: 'DJI Matrice 4D', subtitle: '高性能行业平台 · 测绘',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice4td', name: 'DJI Matrice 4TD', subtitle: '高性能行业平台 · 热成像',
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice5t', name: 'DJI Matrice 5T', subtitle: '轻型行业旗舰 · 激光与毫米波雷达',
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    maxFlightHeight: 500, droneEnumValue: 100, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice30t', name: 'DJI Matrice 30T', subtitle: '行业旗舰 · 热成像',
+    sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 24, imageWidth: 4000, imageHeight: 3000,
+    maxFlightHeight: 500, droneEnumValue: 63, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice300rtk', name: 'DJI Matrice 300 RTK', subtitle: '行业平台 · RTK',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 4000, imageHeight: 3000,
+    maxFlightHeight: 500, droneEnumValue: 60, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice350rtk', name: 'DJI Matrice 350 RTK', subtitle: '行业平台 · RTK',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 4000, imageHeight: 3000,
+    maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'matrice400', name: 'DJI Matrice 400', subtitle: '高性能行业平台 · 多载荷',
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 4000, imageHeight: 3000,
+    maxFlightHeight: 500, droneEnumValue: 100, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
+  },
+  {
+    id: 'custom', name: '通用 DJI 航点', subtitle: '通用 WPML 飞机标识',
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 4000, imageHeight: 3000,
+    maxFlightHeight: 500, droneEnumValue: 68, family: 'enterprise', waypoint: 'limited', exportMode: 'generic',
   },
 ]
+
+CAMERAS.forEach((camera) => {
+  // The supplied WPML sample establishes the Mavic 3E mapping. Other aircraft use a
+  // generic WPML marker until their internal enum is verified against a real export.
+  if (camera.id === 'mavic3e') camera.exportMode = 'exact'
+})
 
 export const CAMERA_MAP = Object.fromEntries(
   CAMERAS.map((camera) => [camera.id, camera]),

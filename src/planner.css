@@ -67,10 +67,16 @@
 .camera-select-trigger strong { color:#3d5747; font-size:10px; font-weight:600; }
 .camera-select-trigger small { color:#96a59c; font-size:8.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .drone-mini { background:#ecf4ee; width:28px; height:28px; display:grid; place-items:center; border-radius:5px; color:#629274; }
-.camera-menu { position:absolute; left:0; right:0; bottom:calc(100% + 5px); background:#fff; z-index:600; border:1px solid #dce7df; border-radius:8px; box-shadow:0 9px 24px rgba(30,59,41,.18); padding:5px; }
+.camera-menu { position:absolute; left:0; right:0; bottom:calc(100% + 5px); background:#fff; z-index:600; border:1px solid #dce7df; border-radius:8px; box-shadow:0 9px 24px rgba(30,59,41,.18); padding:5px; max-height:min(520px,70vh); overflow:auto; }
 .camera-menu-head { display:flex; justify-content:space-between; color:#82938a; font-size:9px; font-weight:700; padding:6px 6px 7px; }
 .camera-menu-head button { border:0; background:transparent; color:#95a39b; padding:0; }
 .camera-menu > button { width:100%; display:flex; align-items:center; border:0; border-radius:5px; background:transparent; padding:7px; gap:7px; text-align:left; color:#6f8276; }
+.camera-group { margin-top:4px; }
+.camera-group-title { padding:7px 8px 4px; font-size:8px; font-weight:800; color:#9aa9a0; letter-spacing:1px; text-transform:uppercase; }
+.waypoint-cap { margin-left:auto; padding:2px 4px; border-radius:4px; font-size:7px; white-space:nowrap; color:#4c7d5c; background:#eef7f0; }
+.waypoint-cap.limited { color:#9a7a3c; background:#fff7e5; }
+.map-host.is-panning { cursor:grabbing; }
+.undo-mark { font-size:20px; line-height:1; }
 .camera-menu > button:hover,.camera-menu > button.is-selected { background:#f0f6f1; }
 .camera-menu > button > span:nth-child(2) { display:flex; flex-direction:column; gap:2px; flex:1; }
 .camera-menu strong { font-size:9.5px; color:#405948; }
