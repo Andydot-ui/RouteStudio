@@ -3,8 +3,9 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { LngLat, PlannerDefinition, PlannerDraft, PlannerResult } from '../lib/types'
 import { PLANNER_DEFS } from '../lib/planners'
+import { gcj02ToWgs84, wgs84ToGcj02 } from '../lib/coords'
 
-export type BaseMap = 'satellite' | 'streets' | 'terrain'
+export type BaseMap = 'satellite' | 'streets'
 type MapCanvasProps = {
   draft: PlannerDraft
   result: PlannerResult
@@ -22,27 +23,70 @@ type MapCanvasProps = {
 
 type MapState = {
   map: L.Map
-  baseLayer: L.TileLayer
+  baseLayers: L.TileLayer[]
   renderLayer: L.LayerGroup
   editLayer: L.LayerGroup
 }
 
-const BASE_LAYERS: Record<BaseMap, { url: string; attribution: string; maxZoom: number }> = {
+type TileSource = { url: string; attribution: string; maxZoom: number; subdomains?: string[] }
+type BaseMapSpec = { base: TileSource; overlay?: TileSource }
+
+// AMap raster tiles are the only base map source: webrd serves the street map,
+// webst style=6 serves imagery and webst style=8 the Chinese road and place annotations.
+const AMAP_SUBDOMAINS = ['01', '02', '03', '04']
+const AMAP_MAX_ZOOM = 18
+
+const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
   satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri and contributors',
-    maxZoom: 19,
+    base: {
+      url: 'https://webst{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
+      subdomains: AMAP_SUBDOMAINS,
+      attribution: '影像 © 高德地图',
+      maxZoom: AMAP_MAX_ZOOM,
+    },
+    overlay: {
+      url: 'https://webst{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
+      subdomains: AMAP_SUBDOMAINS,
+      attribution: '注记 © 高德地图',
+      maxZoom: AMAP_MAX_ZOOM,
+    },
   },
   streets: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
+    base: {
+      url: 'https://webrd{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
+      subdomains: AMAP_SUBDOMAINS,
+      attribution: '街道 © 高德地图',
+      maxZoom: AMAP_MAX_ZOOM,
+    },
   },
-  terrain: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri and contributors',
-    maxZoom: 19,
-  },
+}
+
+const createTileLayer = (source: TileSource) => L.tileLayer(source.url, {
+  attribution: source.attribution,
+  maxZoom: source.maxZoom,
+  subdomains: source.subdomains ?? ['a', 'b', 'c'],
+  crossOrigin: true,
+  keepBuffer: 5,
+  updateWhenIdle: false,
+  updateWhenZooming: true,
+})
+
+// The imagery and annotation tiles are separate layers, so switching base maps
+// always swaps the whole stack instead of a single layer.
+const addBaseLayers = (map: L.Map, baseMap: BaseMap) => {
+  const spec = BASE_LAYERS[baseMap]
+  const layers = [createTileLayer(spec.base)]
+  if (spec.overlay) layers.push(createTileLayer(spec.overlay))
+  layers.forEach((layer) => layer.addTo(map))
+  layers[0].bringToBack()
+  return layers
+}
+
+// Route data stays WGS 84 everywhere in the app. The tiles are GCJ-02, so geometry is
+// converted on the way into Leaflet and map hits are converted back on the way out.
+const displayPoint = (point: LngLat): L.LatLngTuple => {
+  const [lon, lat] = wgs84ToGcj02(point[0], point[1])
+  return [lat, lon]
 }
 
 const markerColor = (def: PlannerDefinition) => def.color
@@ -67,11 +111,14 @@ export function MapCanvas({
   const draftRef = useRef(draft)
   const drawingRef = useRef(drawing)
   const mapReadyRef = useRef(false)
+  const baseMapRef = useRef(baseMap)
+  const appliedBaseMapRef = useRef<BaseMap | null>(null)
 
   useEffect(() => {
     callbacksRef.current = { onAddPoint, onSetInput, onSelectInput, onLocate, onFinishPolygon, onMapReady }
     draftRef.current = draft
     drawingRef.current = drawing
+    baseMapRef.current = baseMap
   })
 
   // Initialize Leaflet exactly once. Map state must never be coupled to route data.
@@ -84,22 +131,19 @@ export function MapCanvas({
       attributionControl: true,
       preferCanvas: true,
       closePopupOnClick: false,
-    }).setView([initialCenter[1], initialCenter[0]], 17)
+    }).setView(displayPoint(initialCenter), 17)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
     L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map)
 
-    const baseLayer = L.tileLayer(BASE_LAYERS.satellite.url, {
-      attribution: BASE_LAYERS.satellite.attribution,
-      maxZoom: BASE_LAYERS.satellite.maxZoom,
-      crossOrigin: true,
-    }).addTo(map)
+    const baseLayers = addBaseLayers(map, baseMapRef.current)
+    appliedBaseMapRef.current = baseMapRef.current
     const renderLayer = L.layerGroup().addTo(map)
     const editLayer = L.layerGroup().addTo(map)
-    stateRef.current = { map, baseLayer, renderLayer, editLayer }
+    stateRef.current = { map, baseLayers, renderLayer, editLayer }
 
     map.on('click', (event: L.LeafletMouseEvent) => {
       if (!drawingRef.current) return
-      callbacksRef.current.onAddPoint([event.latlng.lng, event.latlng.lat])
+      callbacksRef.current.onAddPoint(gcj02ToWgs84(event.latlng.lng, event.latlng.lat))
     })
     map.on('dblclick', (event: L.LeafletMouseEvent) => {
       L.DomEvent.preventDefault(event.originalEvent)
@@ -140,12 +184,12 @@ export function MapCanvas({
     host.addEventListener('mouseup', stopPanning)
     host.addEventListener('mouseleave', stopPanning)
 
-    const initialCenterPoint = L.latLng(initialCenter[1], initialCenter[0])
+    const initialCenterPoint = L.latLng(displayPoint(initialCenter))
     const fitSavedRoute = () => {
       map.invalidateSize()
       const points = draftRef.current.input
       if (points.length > 1) {
-        map.fitBounds(L.latLngBounds(points.map((point) => [point[1], point[0]] as L.LatLngTuple)).pad(0.25), { animate: false })
+        map.fitBounds(L.latLngBounds(points.map(displayPoint)).pad(0.25), { animate: false })
       } else {
         map.setView(initialCenterPoint, 17, { animate: false })
       }
@@ -163,20 +207,10 @@ export function MapCanvas({
 
   useEffect(() => {
     const state = stateRef.current
-    if (!state) return
-    const next = BASE_LAYERS[baseMap]
-    const layer = L.tileLayer(next.url, {
-      attribution: next.attribution,
-      maxZoom: next.maxZoom,
-      crossOrigin: true,
-      keepBuffer: 5,
-      updateWhenIdle: false,
-      updateWhenZooming: true,
-    })
-    state.map.addLayer(layer)
-    state.map.removeLayer(state.baseLayer)
-    state.baseLayer = layer
-    layer.bringToBack()
+    if (!state || appliedBaseMapRef.current === baseMap) return
+    appliedBaseMapRef.current = baseMap
+    state.baseLayers.forEach((layer) => state.map.removeLayer(layer))
+    state.baseLayers = addBaseLayers(state.map, baseMap)
   }, [baseMap])
 
   useEffect(() => {
@@ -192,7 +226,7 @@ export function MapCanvas({
     const def = PLANNER_DEFS[0]
     if (result.source.length > 2) {
       if (draft.kind === 'grid' || draft.kind === 'oblique') {
-        L.polygon(result.source.map((point) => [point[1], point[0]] as L.LatLngTuple), {
+        L.polygon(result.source.map(displayPoint), {
           color: def.color,
           weight: 2,
           fillColor: def.color,
@@ -201,7 +235,7 @@ export function MapCanvas({
           interactive: false,
         }).addTo(state.renderLayer)
       } else {
-        L.polyline(result.source.map((point) => [point[1], point[0]] as L.LatLngTuple), {
+        L.polyline(result.source.map(displayPoint), {
           color: def.color,
           weight: 2,
           opacity: 0.6,
@@ -211,7 +245,7 @@ export function MapCanvas({
       }
     }
     if (draft.kind === 'orbit' && draft.input[0]) {
-      L.circle([draft.input[0][1], draft.input[0][0]], {
+      L.circle(displayPoint(draft.input[0]), {
         radius: result.area > 0 ? Math.sqrt(result.area / Math.PI) : draft.settings.orbitRadius,
         color: '#fff',
         weight: 1.5,
@@ -224,7 +258,7 @@ export function MapCanvas({
     }
     result.legs.forEach((leg, legIndex) => {
       if (leg.points.length > 1) {
-        const latlngs = leg.points.map((point) => [point[1], point[0]] as L.LatLngTuple)
+        const latlngs = leg.points.map(displayPoint)
         const isTransit = leg.kind === 'transit'
         const hue = (180 + legIndex * 29) % 360
         L.polyline(latlngs, {
@@ -243,7 +277,7 @@ export function MapCanvas({
     result.waypoints.forEach((point, index) => {
       if (index % every !== 0 && !point.takePhoto) return
       const camera = showCameraViews && point.takePhoto ? '<div class="camera-view"></div>' : ''
-      L.marker([point.lat, point.lon], {
+      L.marker(displayPoint([point.lon, point.lat]), {
         interactive: false,
         zIndexOffset: point.takePhoto ? 100 : 0,
         icon: L.divIcon({
@@ -263,7 +297,7 @@ export function MapCanvas({
     const def = PLANNER_DEFS[0]
     draft.input.forEach((point, index) => {
       const selected = draft.selectedIndex === index
-      const marker = L.marker([point[1], point[0]], {
+      const marker = L.marker(displayPoint(point), {
         draggable: true,
         zIndexOffset: selected ? 500 : 200,
         icon: L.divIcon({
@@ -280,8 +314,9 @@ export function MapCanvas({
       })
       marker.on('dragend', () => {
         const next = marker.getLatLng()
+        const moved = gcj02ToWgs84(next.lng, next.lat)
         const updated = draftRef.current.input.map((item, itemIndex) =>
-          itemIndex === index ? ([next.lng, next.lat] as LngLat) : item,
+          itemIndex === index ? (moved as LngLat) : item,
         )
         callbacksRef.current.onSetInput(updated)
         callbacksRef.current.onSelectInput(index)

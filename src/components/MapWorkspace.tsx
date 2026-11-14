@@ -4,7 +4,7 @@ import { MapCanvas, type BaseMap } from './MapCanvas'
 import { PLANNER_DEFS } from '../lib/planners'
 import type { LngLat, PlannerDraft, PlannerResult } from '../lib/types'
 
-const BASE_MAP_LABELS: Record<BaseMap, string> = { satellite: '卫星影像', streets: '街道地图', terrain: '地形地图' }
+const BASE_MAP_LABELS: Record<BaseMap, string> = { satellite: '卫星影像', streets: '街道地图' }
 
 export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, setShowNumbers, showCamera, setShowCamera, drawing, setDrawing, onAddPoint, onSetInput, onSelectInput, onLocate, onClear, onUndo, onFinishPolygon, onNotice }: {
   draft: PlannerDraft

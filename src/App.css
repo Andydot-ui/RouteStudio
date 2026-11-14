@@ -46,10 +46,6 @@
 .active-rails { position: absolute; right: 9px; display: flex; flex-direction: column; gap: 3px; opacity: .65; }
 .active-rails i { display: block; width: 10px; height: 2px; border-radius: 2px; background: #4b8b62; }
 .active-rails i:nth-child(2) { width: 7px; margin-left: auto; }
-.sidebar-divider { border-top: 1px solid #e5ece7; margin: 16px 10px 18px; }
-.sidebar-tool { width: 100%; display: flex; align-items: center; text-align: left; gap: 9px; border: 0; border-radius: 7px; background: transparent; padding: 10px; color: #6d7e74; font-size: 12px; font-weight: 600; }
-.sidebar-tool:hover { background: #f2f7f4; color: #375c48; }
-.sidebar-tool svg:last-child { margin-left: auto; opacity: .5; }
 .count-badge { display: inline-flex; justify-content: center; align-items: center; min-width: 19px; height: 18px; padding: 0 5px; margin-left: auto; border-radius: 9px; font-size: 10px; font-weight: 700; color: #5d7565; background: #e9f0eb; }
 .sidebar-spacer { flex: 1; }
 .quick-start { padding: 13px; margin: 0 4px 15px; background: #eff6f0; border: 1px solid #e0ece2; border-radius: 10px; }

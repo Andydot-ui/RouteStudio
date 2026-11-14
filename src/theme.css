@@ -24,9 +24,7 @@
 :root[data-theme=dark] .planning-copy strong{color:#bdd2c4}
 :root[data-theme=dark] .planning-copy small{color:#779080}
 :root[data-theme=dark] .planning-item.is-active .planning-copy strong{color:#b5e3c2}
-:root[data-theme=dark] .sidebar-divider,:root[data-theme=dark] .sidebar-footer{border-color:#29382f}
-:root[data-theme=dark] .sidebar-tool{color:#93a99b}
-:root[data-theme=dark] .sidebar-tool:hover{background:#1d2b23;color:#c6e2d0}
+:root[data-theme=dark] .sidebar-footer{border-color:#29382f}
 :root[data-theme=dark] .count-badge{color:#b9d9c2;background:#263b2d}
 :root[data-theme=dark] .quick-start{background:#1a2a20;border-color:#2a422f}
 :root[data-theme=dark] .quick-start p{color:#8fa398}
