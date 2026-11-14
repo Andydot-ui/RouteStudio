@@ -800,6 +800,13 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
   }
 }
 
+// Fold an angle into its legal range. Dials wrap past their maximum, so 190 degrees of
+// line rotation is the same axis as 10 degrees rather than an out-of-bounds value.
+function normalizeDegrees(value: number, range: number) {
+  if (!Number.isFinite(value)) return 0
+  return ((Math.round(value) % range) + range) % range
+}
+
 export function sanitizeSettings(settings: PlannerSettings): PlannerSettings {
   return {
     ...settings,
@@ -816,6 +823,12 @@ export function sanitizeSettings(settings: PlannerSettings): PlannerSettings {
     sampleInterval: clamp(Number(settings.sampleInterval) || 20, 2, 300),
     lineSpacing: clamp(Number(settings.lineSpacing) || 30, 2, 500),
     takeoffSecurityHeight: clamp(Number(settings.takeoffSecurityHeight) || 30, 2, 500),
+    // 0 is a valid gimbal pitch, so this cannot use the `|| default` shortcut above.
+    gimbalPitch: Number.isFinite(Number(settings.gimbalPitch))
+      ? clamp(Number(settings.gimbalPitch), -90, 0)
+      : -90,
+    rotation: normalizeDegrees(Number(settings.rotation), 180),
+    headingAngle: normalizeDegrees(Number(settings.headingAngle), 360),
   }
 }
 

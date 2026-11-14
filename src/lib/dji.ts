@@ -30,6 +30,16 @@ function textByLocalName(root: ParentNode, name: string) {
   return allByLocalName(root, name)[0]?.textContent?.trim() ?? ''
 }
 
+// WPML fields can be absent or blank, and 0 is a legal angle, so callers need the first
+// value that parses rather than the first truthy one.
+function firstNumber(...values: string[]) {
+  for (const value of values) {
+    const parsed = Number(value)
+    if (value.trim() !== '' && Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
 function parseCoordinate(text: string): LngLat | null {
   for (const chunk of text.trim().split(/\s+/)) {
     const values = chunk.split(',').map(Number)
@@ -79,16 +89,22 @@ export function importMissionBuffer(buffer: ArrayBuffer, filename: string): Impo
       lat: coordinate[1],
       height: Number(textByLocalName(placemark, 'executeHeight')) || 100,
       speed: Number(textByLocalName(placemark, 'waypointSpeed')) || 2.5,
-      pitch: Number(textByLocalName(placemark, 'gimbalPitchRotateAngle'))
-        || Number(textByLocalName(placemark, 'waypointGimbalPitchAngle'))
-        || -90,
-      yaw: Number(textByLocalName(placemark, 'waypointHeadingAngle')) || 0,
+      pitch: firstNumber(
+        textByLocalName(placemark, 'gimbalPitchRotateAngle'),
+        textByLocalName(placemark, 'waypointGimbalPitchAngle'),
+      ) ?? -90,
+      yaw: firstNumber(textByLocalName(placemark, 'waypointHeadingAngle')) ?? 0,
       takePhoto: directives.includes('takePhoto'),
       actions: directives,
     }
   })
   const points = waypoints.map((point) => [point.lon, point.lat] as LngLat)
   const first = waypoints[0]
+  const importedMode = textByLocalName(placemarks[0], 'waypointHeadingMode').trim()
+  const headingMode = HEADING_MODE_IMPORTS[importedMode] ?? 'followWayline'
+  if (importedMode && headingMode === 'followWayline' && importedMode !== 'followWayline') {
+    warnings.push(`暂不支持 ${importedMode} 机头朝向，已按跟随航线导入`)
+  }
   const settings: PlannerSettings = {
     name: filename.replace(/\.(kmz|kml)$/i, ''),
     drone: 'custom',
@@ -98,7 +114,7 @@ export function importMissionBuffer(buffer: ArrayBuffer, filename: string): Impo
     takeoffSecurityHeight: 30,
     finishAction: 'goHome',
     gimbalPitch: first.pitch,
-    headingMode: 'followWayline',
+    headingMode,
     headingAngle: first.yaw,
     forwardOverlap: 80,
     sideOverlap: 70,
@@ -175,6 +191,20 @@ function distanceForValidation(a: Waypoint, b: Waypoint) {
   return 2 * 6378137 * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
+// The planner already resolves the aircraft yaw per heading mode, but WPML needs the
+// matching mode name too. `manual` maps to DJI's `manually`, not a literal mode string.
+const HEADING_MODE_MAP: Record<PlannerSettings['headingMode'], string> = {
+  followWayline: 'followWayline',
+  fixed: 'fixed',
+  manual: 'manually',
+}
+
+const HEADING_MODE_IMPORTS: Record<string, PlannerSettings['headingMode']> = {
+  followWayline: 'followWayline',
+  fixed: 'fixed',
+  manually: 'manual',
+}
+
 function finishAction(settings: PlannerSettings) {
   return settings.finishAction === 'autoLand' || settings.finishAction === 'noAction'
     ? settings.finishAction
@@ -223,7 +253,9 @@ export function buildWaylinesXml(
   let nextActionId = 0
   const placemarks = waypoints.map((waypoint, index) => {
     const next = waypoints[index + 1]
-    const yaw = next ? bearing([waypoint.lon, waypoint.lat], [next.lon, next.lat]) : waypoint.yaw
+    const courseYaw = next ? bearing([waypoint.lon, waypoint.lat], [next.lon, next.lat]) : waypoint.yaw
+    const headingMode = HEADING_MODE_MAP[settings.headingMode] ?? 'followWayline'
+    const yaw = headingMode === 'followWayline' ? courseYaw : waypoint.yaw
     const pitch = Math.max(-90, Math.min(0, Number.isFinite(waypoint.pitch) ? waypoint.pitch : -90))
     const groupId = index * 2 + 1
     const gimbalActionId = nextActionId++
@@ -261,7 +293,7 @@ export function buildWaylinesXml(
         <wpml:executeHeight>${normalizeHeight(waypoint.height)}</wpml:executeHeight>
         <wpml:waypointSpeed>${speed.toFixed(1)}</wpml:waypointSpeed>
         <wpml:waypointHeadingParam>
-          <wpml:waypointHeadingMode>followWayline</wpml:waypointHeadingMode>
+          <wpml:waypointHeadingMode>${headingMode}</wpml:waypointHeadingMode>
           <wpml:waypointHeadingAngle>${normalizeYaw(yaw).toFixed(1)}</wpml:waypointHeadingAngle>
           <wpml:waypointPoiPoint>0.000000,0.000000,0.000000</wpml:waypointPoiPoint>
           <wpml:waypointHeadingAngleEnable>1</wpml:waypointHeadingAngleEnable>

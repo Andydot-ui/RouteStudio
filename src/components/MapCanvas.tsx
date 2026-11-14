@@ -18,6 +18,7 @@ type MapCanvasProps = {
   onSelectInput: (index: number | null) => void
   onLocate: (point: LngLat) => void
   onFinishPolygon: () => void
+  previewIndex?: number | null
   onMapReady?: () => void
 }
 
@@ -26,6 +27,7 @@ type MapState = {
   baseLayers: L.TileLayer[]
   renderLayer: L.LayerGroup
   editLayer: L.LayerGroup
+  previewLayer: L.LayerGroup
 }
 
 type TileSource = { url: string; attribution: string; maxZoom: number; subdomains?: string[] }
@@ -103,6 +105,7 @@ export function MapCanvas({
   onSelectInput,
   onLocate,
   onFinishPolygon,
+  previewIndex = null,
   onMapReady,
 }: MapCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -139,7 +142,8 @@ export function MapCanvas({
     appliedBaseMapRef.current = baseMapRef.current
     const renderLayer = L.layerGroup().addTo(map)
     const editLayer = L.layerGroup().addTo(map)
-    stateRef.current = { map, baseLayers, renderLayer, editLayer }
+    const previewLayer = L.layerGroup().addTo(map)
+    stateRef.current = { map, baseLayers, renderLayer, editLayer, previewLayer }
 
     map.on('click', (event: L.LeafletMouseEvent) => {
       if (!drawingRef.current) return
@@ -328,6 +332,29 @@ export function MapCanvas({
       marker.addTo(state.editLayer)
     })
   }, [draft.input, draft.kind, draft.selectedIndex])
+
+  // The waypoint preview ring follows the stepper index and eases the viewport so the
+  // selected point is always on screen when stepping through the route.
+  useEffect(() => {
+    const state = stateRef.current
+    if (!state) return
+    state.previewLayer.clearLayers()
+    const point = previewIndex === null ? undefined : result.waypoints[previewIndex]
+    if (!point) return
+    L.marker(displayPoint([point.lon, point.lat]), {
+      interactive: false,
+      zIndexOffset: 900,
+      icon: L.divIcon({
+        className: 'preview-marker-shell',
+        html: `<span class="preview-ring"></span><span class="preview-core" style="--preview-color:${PLANNER_DEFS[0].color}"></span>`,
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+      }),
+    }).addTo(state.previewLayer)
+    if (!state.map.getBounds().contains(displayPoint([point.lon, point.lat]))) {
+      state.map.panTo(displayPoint([point.lon, point.lat]), { animate: true, duration: 0.35 })
+    }
+  }, [previewIndex, result])
 
   return <div ref={hostRef} className={`map-host ${drawing ? 'is-drawing' : ''}`} aria-label="航线规划地图" />
 }

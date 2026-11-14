@@ -1,0 +1,542 @@
+/* Windows 11 / WinUI 3 design layer.
+   Tokens follow the documented Fluent design colours (TextFillColor*, ControlFillColor*,
+   CardStrokeColorDefault, AccentFillColorDefault) and the Win11 control geometry:
+   4px control radius, 8px popup radius, 32px control height, bottom-weighted borders. */
+:root {
+  --win-page: #f3f3f3;
+  --win-layer: #ffffff;
+  --win-card: #fbfbfb;
+  --win-card-hover: #f6f6f6;
+  --win-control: #f9f9f9;
+  --win-control-hover: #f2f2f2;
+  --win-control-active: #e8e8e8;
+  --win-control-border: #dcdcdc;
+  --win-control-border-bottom: #c9c9c9;
+  --win-subtle-hover: #efefef;
+  --win-subtle-active: #e6e6e6;
+  --win-stroke: #e5e5e5;
+  --win-stroke-strong: #dadada;
+  --win-divider: #e8e8e8;
+  --win-text: #1b1b1b;
+  --win-text-secondary: #5f5f5f;
+  --win-text-tertiary: #8a8a8a;
+  --win-text-disabled: #a3a3a3;
+  --win-accent: #005fb8;
+  --win-accent-hover: #1a6cc0;
+  --win-accent-active: #0053a3;
+  --win-accent-text: #ffffff;
+  --win-accent-subtle: #eaf4fc;
+  --win-accent-border: #b6dcf5;
+  --win-selection: #d6ebf9;
+  --win-focus: #1b1b1b;
+  --win-shadow-8: 0 1px 2px rgba(0, 0, 0, .07), 0 4px 12px rgba(0, 0, 0, .1);
+  --win-shadow-16: 0 2px 4px rgba(0, 0, 0, .07), 0 8px 24px rgba(0, 0, 0, .14);
+  --win-radius: 4px;
+  --win-radius-popup: 8px;
+  --win-ease-out: cubic-bezier(.1, .9, .2, 1);
+  --win-ease: cubic-bezier(.33, 0, .67, 1);
+  --win-chrome-bg: rgba(249, 249, 249, .84);
+  --win-chrome-border: rgba(255, 255, 255, .62);
+  --win-chrome-text: #1b1b1b;
+  --win-chrome-muted: #5f5f5f;
+  --win-chrome-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+:root[data-theme=dark] {
+  --win-page: #202020;
+  --win-layer: #272727;
+  --win-card: #2b2b2b;
+  --win-card-hover: #323232;
+  --win-control: rgba(255, 255, 255, .06);
+  --win-control-hover: rgba(255, 255, 255, .09);
+  --win-control-active: rgba(255, 255, 255, .04);
+  --win-control-border: rgba(255, 255, 255, .17);
+  --win-control-border-bottom: rgba(255, 255, 255, .23);
+  --win-subtle-hover: rgba(255, 255, 255, .06);
+  --win-subtle-active: rgba(255, 255, 255, .03);
+  --win-stroke: rgba(255, 255, 255, .11);
+  --win-stroke-strong: rgba(255, 255, 255, .16);
+  --win-divider: rgba(255, 255, 255, .09);
+  --win-text: #ffffff;
+  --win-text-secondary: rgba(255, 255, 255, .78);
+  --win-text-tertiary: rgba(255, 255, 255, .55);
+  --win-text-disabled: rgba(255, 255, 255, .36);
+  --win-accent: #0078d4;
+  --win-accent-hover: #1a86d9;
+  --win-accent-active: #0067b8;
+  --win-accent-text: #ffffff;
+  --win-accent-subtle: rgba(0, 120, 212, .2);
+  --win-accent-border: rgba(0, 120, 212, .5);
+  --win-selection: rgba(0, 120, 212, .32);
+  --win-focus: #ffffff;
+  --win-shadow-8: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 12px rgba(0, 0, 0, .4);
+  --win-shadow-16: 0 2px 4px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .5);
+  --win-chrome-bg: rgba(43, 43, 43, .82);
+  --win-chrome-border: rgba(255, 255, 255, .1);
+  --win-chrome-text: #ffffff;
+  --win-chrome-muted: rgba(255, 255, 255, .7);
+  --win-chrome-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+}
+
+/* Shell ---------------------------------------------------------------- */
+:root { color: var(--win-text); background: var(--win-page); }
+:root[data-theme=dark] { color: var(--win-text); }
+.app-shell { background: var(--win-page); }
+.topbar { background: var(--win-layer); border-bottom: 1px solid var(--win-stroke); }
+:root[data-theme=dark] .topbar { background: var(--win-layer); border-bottom-color: var(--win-stroke); }
+.brand > span { color: var(--win-text); font-weight: 600; letter-spacing: -.2px; font-size: 15px; }
+.brand > span span { color: var(--win-accent); font-weight: 600; }
+.brand-symbol { border-radius: var(--win-radius); background: var(--win-accent); box-shadow: none; }
+.brand em { color: var(--win-text-tertiary); border-color: var(--win-stroke-strong); border-radius: 3px; }
+.topbar-divider, .history-controls { border-color: var(--win-divider); }
+.breadcrumb { color: var(--win-text-tertiary); font-size: 13px; }
+.mission-title-input { border-radius: var(--win-radius); color: var(--win-text); }
+.mission-title-input:hover { border-color: var(--win-control-border); background: var(--win-subtle-hover); }
+.mission-title-input input { color: var(--win-text); font-size: 13px; font-weight: 600; }
+.mission-title-input svg { color: var(--win-text-tertiary); }
+.unsaved-label { color: #8a5a12; background: #fff4e5; border-color: #f3dcb4; border-radius: 3px; font-size: 11px; }
+:root[data-theme=dark] .unsaved-label { color: #f8dcaa; background: rgba(202, 136, 8, .18); border-color: rgba(202, 136, 8, .4); }
+
+/* Win11 buttons -------------------------------------------------------- */
+.button { border-radius: var(--win-radius); min-height: 32px; padding: 0 12px; font-size: 13px; font-weight: 400;
+  transition: background-color .11s var(--win-ease), border-color .11s var(--win-ease), color .11s var(--win-ease); }
+.button.secondary { background: var(--win-control); border-color: var(--win-control-border); color: var(--win-text);
+  box-shadow: inset 0 -1px 0 var(--win-control-border-bottom); }
+.button.secondary:hover { background: var(--win-control-hover); border-color: var(--win-control-border); color: var(--win-text); }
+.button.secondary:active { background: var(--win-control-active); color: var(--win-text-secondary); box-shadow: none; }
+.button.primary { background: var(--win-accent); border-color: var(--win-accent); color: var(--win-accent-text); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .08); }
+.button.primary:hover { background: var(--win-accent-hover); border-color: var(--win-accent-hover); }
+.button.primary:active { background: var(--win-accent-active); color: rgba(255, 255, 255, .7); }
+.button.ghost { color: var(--win-text-secondary); background: transparent; border-color: transparent; }
+.button.ghost:hover { background: var(--win-subtle-hover); color: var(--win-text); }
+.button.ghost:active { background: var(--win-subtle-active); }
+.button.compact { min-height: 30px; padding: 0 10px; font-size: 12px; }
+.icon-button { width: 32px; height: 32px; border-radius: var(--win-radius); color: var(--win-text-secondary); transition: background-color .11s var(--win-ease), color .11s var(--win-ease); }
+.icon-button:hover { color: var(--win-text); background: var(--win-subtle-hover); border-color: transparent; }
+.icon-button:active { background: var(--win-subtle-active); }
+.icon-button.is-active { color: var(--win-accent); background: var(--win-accent-subtle); border-color: transparent; }
+:root[data-theme=dark] .icon-button.is-active { color: #77c0ee; }
+.theme-toggle span { font-size: 12px; }
+
+/* Sidebar -------------------------------------------------------------- */
+.sidebar { background: var(--win-page); border-right: 1px solid var(--win-stroke); padding: 16px 8px 10px; }
+:root[data-theme=dark] .sidebar { background: var(--win-page); border-right-color: var(--win-stroke); }
+.sidebar-section-label { color: var(--win-text-secondary); font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 0 8px 8px; }
+.planning-item { border-radius: var(--win-radius); min-height: 44px; padding: 6px 8px; color: var(--win-text); gap: 10px;
+  transition: background-color .11s var(--win-ease); }
+.planning-item:hover { background: var(--win-subtle-hover); }
+.planning-item.is-active { background: var(--win-card); border-color: var(--win-stroke); box-shadow: inset 3px 0 0 var(--win-accent), var(--win-shadow-8); }
+.planning-icon { width: 28px; height: 28px; border-radius: var(--win-radius); box-shadow: none; }
+.planning-icon svg { width: 17px; height: 17px; }
+.planning-copy strong { color: var(--win-text); font-size: 13px; font-weight: 600; }
+.planning-copy small { color: var(--win-text-tertiary); font-size: 11px; }
+.planning-item.is-active .planning-copy strong { color: var(--win-text); }
+.active-rails { display: none; }
+.count-badge { min-width: 22px; height: 20px; border-radius: 10px; font-size: 11px; font-weight: 600; color: var(--win-text-secondary); background: var(--win-card); border: 1px solid var(--win-stroke); }
+.planning-item.is-active .count-badge { color: var(--win-accent); background: var(--win-accent-subtle); border-color: transparent; }
+.quick-start { background: var(--win-card); border: 1px solid var(--win-stroke); border-radius: 6px; padding: 12px; margin: 0 2px 12px; }
+.quick-start-top { color: var(--win-text); font-size: 12px; font-weight: 600; gap: 8px; }
+.quick-start p { color: var(--win-text-secondary); font-size: 11.5px; line-height: 1.55; margin: 7px 0 10px; }
+.quick-start button { color: var(--win-accent); font-size: 12px; font-weight: 600; border-radius: var(--win-radius); padding: 3px 6px; margin-left: -6px; }
+.quick-start button:hover { background: var(--win-subtle-hover); }
+:root[data-theme=dark] .quick-start button { color: #6cb6ea; }
+.sidebar-footer { border-top-color: var(--win-divider); color: var(--win-text-secondary); font-size: 11.5px; padding: 12px 8px 0; }
+.status-dot { background: var(--win-accent); box-shadow: 0 0 0 3px var(--win-accent-subtle); }
+
+/* Panels --------------------------------------------------------------- */
+.settings-panel, .waypoints-panel, .files-panel { background: var(--win-layer); }
+.settings-panel { border-left: 1px solid var(--win-stroke); }
+:root[data-theme=dark] .settings-panel { background: var(--win-layer); border-left-color: var(--win-stroke); }
+.settings-panel-header { min-height: 62px; padding: 16px 18px 12px; border-bottom: 1px solid var(--win-divider); }
+.settings-panel-header h1, .settings-panel-header h2 { color: var(--win-text); font-size: 16px; font-weight: 600; letter-spacing: -.1px; }
+.settings-panel-header h1 span, .settings-panel-header h2 span { color: var(--win-text-tertiary); font-weight: 400; }
+.settings-panel-header h2 span { font-size: 12px; background: var(--win-card); color: var(--win-text-secondary); border-radius: 3px; padding: 1px 6px; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .3px; text-transform: none; color: var(--win-text-secondary); }
+.collapse-button { background: transparent; border: 1px solid transparent; border-radius: var(--win-radius); color: var(--win-text-secondary); }
+.collapse-button:hover { background: var(--win-subtle-hover); color: var(--win-text); }
+
+/* Win11 Pivot tabs ----------------------------------------------------- */
+.tabs { height: 40px; padding: 0 18px; gap: 2px; border-bottom: 1px solid var(--win-divider); }
+.tabs button { color: var(--win-text-secondary); font-size: 13px; font-weight: 400; padding: 0 10px; border-radius: var(--win-radius); transition: background-color .11s var(--win-ease), color .11s var(--win-ease); }
+.tabs button:hover { color: var(--win-text); background: var(--win-subtle-hover); }
+.tabs button.is-active { color: var(--win-text); font-weight: 600; background: transparent; }
+.tabs button.is-active::after { left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px; background: var(--win-accent); }
+.tabs button span { font-size: 11px; color: var(--win-text-secondary); background: var(--win-card); border-radius: 8px; padding: 0 5px; }
+
+/* Cards and fields ----------------------------------------------------- */
+.mission-summary { margin: 14px 16px 2px; padding: 12px; border: 1px solid var(--win-stroke); border-radius: 6px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--planner-color) 7%, var(--win-card)), var(--win-card)); }
+.summary-icon { border-radius: var(--win-radius); background: var(--planner-color); }
+.summary-heading strong { color: var(--win-text); font-size: 13px; font-weight: 600; }
+.summary-heading span:not(.summary-icon) { color: var(--win-text-secondary); font-size: 11.5px; }
+.summary-stats { border-top-color: var(--win-divider); }
+.summary-stats div { border-left-color: var(--win-divider); }
+.summary-stats strong { color: var(--win-text); font-size: 13px; font-weight: 600; font-family: 'Segoe UI Variable Display', 'Segoe UI Semibold', 'Segoe UI', sans-serif; }
+.summary-stats span { color: var(--win-text-tertiary); font-size: 11px; margin-top: 3px; }
+.panel-section { padding: 14px 18px 16px; border-bottom: 1px solid var(--win-divider); }
+.section-heading { color: var(--win-text); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.section-heading svg { color: var(--win-text-tertiary); }
+.section-value { font-size: 11.5px; color: var(--win-text-secondary); font-weight: 400; }
+.field { color: var(--win-text-secondary); font-size: 12px; gap: 4px; }
+.field > span:first-child { font-weight: 400; color: var(--win-text-secondary); }
+.field input, .field select { height: 32px; border: 1px solid var(--win-control-border); border-radius: var(--win-radius);
+  background: var(--win-control); color: var(--win-text); font-size: 13px; padding: 0 9px;
+  box-shadow: inset 0 -1px 0 var(--win-control-border-bottom); transition: background-color .11s var(--win-ease), border-color .11s var(--win-ease); }
+.field input:hover, .field select:hover { border-color: var(--win-control-border); background: var(--win-control-hover); }
+.field input:focus, .field select:focus { background: var(--win-layer); border-color: var(--win-accent); outline: none; box-shadow: inset 0 -2px 0 var(--win-accent); }
+.number-input { height: 32px; border: 1px solid var(--win-control-border); background: var(--win-control); border-radius: var(--win-radius); box-shadow: inset 0 -1px 0 var(--win-control-border-bottom); }
+.number-input input { color: var(--win-text); font-size: 13px; }
+.number-input span { color: var(--win-text-tertiary); font-size: 11px; }
+.preset-row button { height: 30px; border: 1px solid var(--win-control-border); background: var(--win-control); border-radius: var(--win-radius); color: var(--win-text-secondary); font-size: 12px; transition: background-color .11s var(--win-ease); }
+.preset-row button:hover { background: var(--win-control-hover); color: var(--win-text); }
+.preset-row button.is-active { color: var(--win-text); background: var(--win-accent-subtle); border-color: var(--win-accent-border); font-weight: 600; box-shadow: inset 0 -2px 0 var(--win-accent); }
+.planning-note { border: 1px solid var(--win-stroke); background: var(--win-card); border-radius: 6px; padding: 9px; }
+.planning-note span { font-size: 11px; color: var(--win-text-secondary); }
+.planning-note strong { font-size: 11px; color: var(--win-text); font-weight: 600; }
+:root[data-theme=dark] .planning-note { border-color: var(--win-stroke); background: var(--win-card); }
+:root[data-theme=dark] .planning-note span { color: var(--win-text-secondary); }
+:root[data-theme=dark] .planning-note strong { color: var(--win-text); }
+.info-line { color: var(--win-text-secondary); font-size: 11.5px; }
+.info-line strong { color: var(--win-text); font-weight: 600; }
+
+/* Win11 slider --------------------------------------------------------- */
+.range-control { margin-bottom: 15px; }
+.range-label { color: var(--win-text-secondary); font-size: 12px; margin-bottom: 7px; }
+.range-label strong { color: var(--win-text); font-size: 13px; font-weight: 600; font-family: 'Segoe UI Variable Text', 'Segoe UI', sans-serif; }
+.range-label strong small { font-size: 11px; color: var(--win-text-tertiary); font-weight: 400; }
+.range-control input[type='range'] { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--win-accent) 0 var(--range-fill), var(--win-stroke-strong) var(--range-fill) 100%); }
+.range-control input[type='range']::-webkit-slider-thumb { width: 18px; height: 18px; background: var(--win-accent); border: 4px solid var(--win-layer); box-shadow: 0 0 0 1px var(--win-control-border), 0 1px 4px rgba(0, 0, 0, .18); border-radius: 50%; transition: transform .11s var(--win-ease); }
+.range-control input[type='range']:hover::-webkit-slider-thumb { transform: scale(1.06); }
+.range-control input[type='range']::-moz-range-thumb { width: 11px; height: 11px; background: var(--win-accent); border: 4px solid var(--win-layer); box-shadow: 0 0 0 1px var(--win-control-border); border-radius: 50%; }
+.help-mark { color: var(--win-text-tertiary); border-color: var(--win-stroke-strong); font-size: 8px; }
+
+/* Win11 checkbox ------------------------------------------------------- */
+.check-row { color: var(--win-text); font-size: 12.5px; gap: 12px 16px; }
+.checkbox-ui { width: 18px; height: 18px; border: 1px solid var(--win-control-border-bottom); border-radius: 3px; background: var(--win-control); position: relative; flex-shrink: 0; transition: background-color .11s var(--win-ease), border-color .11s var(--win-ease); }
+input:checked + .checkbox-ui { background: var(--win-accent); border-color: var(--win-accent); }
+input:checked + .checkbox-ui::after { content: ''; position: absolute; left: 5px; top: 2px; width: 5px; height: 9px; border: solid #fff; border-width: 0 1.6px 1.6px 0; transform: rotate(42deg); }
+input:focus-visible + .checkbox-ui { outline: 2px solid var(--win-focus); outline-offset: 2px; }
+input[type='checkbox'] { accent-color: var(--win-accent); }
+.layer-menu input { accent-color: var(--win-accent); }
+
+/* Camera picker -------------------------------------------------------- */
+.camera-select-trigger { height: 44px; border: 1px solid var(--win-control-border); border-radius: var(--win-radius); background: var(--win-control); color: var(--win-text-secondary); box-shadow: inset 0 -1px 0 var(--win-control-border-bottom); }
+.camera-select-trigger:hover { background: var(--win-control-hover); }
+.camera-select-trigger strong { color: var(--win-text); font-size: 12.5px; font-weight: 600; }
+.camera-select-trigger small { color: var(--win-text-tertiary); font-size: 11px; }
+.drone-mini { background: var(--win-accent-subtle); color: var(--win-accent); border-radius: var(--win-radius); }
+:root[data-theme=dark] .drone-mini { color: #77c0ee; }
+.waypoint-cap { font-size: 10px; color: var(--win-accent); background: var(--win-accent-subtle); border-radius: 3px; }
+.waypoint-cap.limited { color: #8a5a12; background: #fff4e5; }
+:root[data-theme=dark] .waypoint-cap.limited { color: #f8dcaa; background: rgba(202, 136, 8, .2); }
+.camera-radio { border-color: var(--win-control-border-bottom); color: var(--win-accent); }
+.camera-icon { color: var(--win-accent); }
+
+/* Popups --------------------------------------------------------------- */
+.floating-menu { background: var(--win-layer); border: 1px solid var(--win-stroke); border-radius: var(--win-radius-popup); box-shadow: var(--win-shadow-16); padding: 4px; }
+:root[data-theme=dark] .floating-menu { background: #2c2c2c; border-color: rgba(255, 255, 255, .12); }
+.map-menu button { border-radius: var(--win-radius); color: var(--win-text); font-size: 12.5px; padding: 8px 9px; }
+.map-menu button:hover { background: var(--win-subtle-hover); }
+.map-menu button.is-selected { background: var(--win-accent-subtle); color: var(--win-text); font-weight: 600; }
+:root[data-theme=dark] .map-menu button.is-selected { background: var(--win-selection); color: #fff; }
+.floating-menu-title { font-size: 12px; color: var(--win-text); font-weight: 600; letter-spacing: 0; padding: 7px 7px 8px; }
+.layer-menu label { font-size: 12.5px; color: var(--win-text); padding: 7px 4px; }
+.layer-line { background: var(--win-divider); }
+.layer-reset-button { color: var(--win-accent); font-size: 12.5px; font-weight: 600; border-radius: var(--win-radius); padding: 6px; }
+.layer-reset-button:hover { background: var(--win-subtle-hover); }
+:root[data-theme=dark] .layer-reset-button { color: #6cb6ea; }
+.camera-menu { background: var(--win-layer); border: 1px solid var(--win-stroke); border-radius: var(--win-radius-popup); box-shadow: var(--win-shadow-16); }
+:root[data-theme=dark] .camera-menu { background: #2c2c2c; border-color: rgba(255, 255, 255, .12); }
+.camera-menu > button { border-radius: var(--win-radius); color: var(--win-text); padding: 7px 8px; }
+.camera-menu > button:hover, .camera-menu > button.is-selected { background: var(--win-subtle-hover); }
+.camera-menu strong { font-size: 12px; color: var(--win-text); }
+.camera-menu small { font-size: 10.5px; color: var(--win-text-tertiary); }
+.camera-group-title { font-size: 11px; color: var(--win-text-secondary); letter-spacing: 0; text-transform: none; font-weight: 600; }
+
+
+/* Map overlay chrome ---------------------------------------------------
+   Floating map controls use the Win11 in-flight acrylic tokens so they read
+   the same way whether the app is in light or dark mode. */
+.map-layer-controls > button {
+  height: 32px; border-radius: var(--win-radius); font-size: 12px; font-weight: 600;
+  background: var(--win-chrome-bg); border: 1px solid var(--win-chrome-border);
+  color: var(--win-chrome-text); box-shadow: var(--win-chrome-shadow);
+  backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%);
+  transition: background-color .11s var(--win-ease);
+}
+.map-layer-controls > button:hover { background: var(--win-chrome-bg); filter: brightness(.96); }
+.map-layer-controls > button svg { color: var(--win-chrome-muted); }
+.floating-pill, .drawing-pill {
+  border-radius: var(--win-radius-popup); background: var(--win-chrome-bg);
+  border: 1px solid var(--win-chrome-border); color: var(--win-chrome-text);
+  box-shadow: var(--win-chrome-shadow); backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  transition: background-color .11s var(--win-ease), border-color .11s var(--win-ease);
+}
+.drawing-pill:hover { filter: brightness(.96); }
+.drawing-pill strong { color: var(--win-chrome-text); font-size: 12px; font-weight: 600; }
+.drawing-pill small { color: var(--win-chrome-muted); font-size: 10.5px; }
+.drawing-status-icon { background: var(--win-chrome-border); color: var(--win-chrome-text); border-radius: 3px; }
+.drawing-pill.is-active { background: var(--win-accent); border-color: var(--win-accent); }
+.drawing-pill.is-active strong, .drawing-pill.is-active small { color: #fff; }
+.drawing-pill.is-active .drawing-status-icon { background: rgba(255, 255, 255, .22); color: #fff; }
+:root[data-theme=dark] .drawing-pill.is-active { background: #4cc2ff; border-color: #4cc2ff; }
+:root[data-theme=dark] .drawing-pill.is-active strong,
+:root[data-theme=dark] .drawing-pill.is-active small,
+:root[data-theme=dark] .drawing-pill.is-active .drawing-status-icon { color: #003660; }
+.map-tool-stack {
+  border-radius: var(--win-radius); background: var(--win-chrome-bg);
+  border: 1px solid var(--win-chrome-border); box-shadow: var(--win-chrome-shadow);
+  backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+.map-tool-stack button { height: 32px; width: 32px; color: var(--win-chrome-text); border-bottom: 1px solid var(--win-chrome-border); background: transparent; }
+.map-tool-stack button:last-child { border-bottom: 0; }
+.map-tool-stack button:hover { background: var(--win-chrome-hover, rgba(0, 0, 0, .06)); }
+:root[data-theme=dark] .map-tool-stack button:hover { background: rgba(255, 255, 255, .08); }
+.map-tool-stack button.is-active { background: var(--win-accent); color: #fff; }
+:root[data-theme=dark] .map-tool-stack button.is-active { background: #4cc2ff; color: #003660; }
+.undo-mark, .small-number { color: inherit; font-size: 12px; }
+.map-bottom-card {
+  border-radius: var(--win-radius); color: var(--win-chrome-text);
+  background: var(--win-chrome-bg); border: 1px solid var(--win-chrome-border);
+  box-shadow: var(--win-chrome-shadow); backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+.map-bottom-card span { color: var(--win-chrome-muted); letter-spacing: .3px; }
+.map-bottom-card strong { color: var(--win-chrome-text); font-size: 11px; }
+.map-bottom-card button { color: var(--win-chrome-muted); border-left-color: var(--win-chrome-border); }
+.map-bottom-card button:hover { color: var(--win-chrome-text); }
+.coordinate-mark { color: var(--win-chrome-muted); }
+.map-help-hint { color: var(--win-chrome-text); font-size: 11px; text-shadow: 0 1px 4px rgba(0, 0, 0, .45); }
+.route-tooltip { background: var(--win-layer) !important; border: 1px solid var(--win-stroke) !important; color: var(--win-text) !important; box-shadow: var(--win-shadow-16) !important; border-radius: var(--win-radius-popup) !important; }
+:root[data-theme=dark] .route-tooltip { background: #2c2c2c !important; border-color: rgba(255, 255, 255, .12) !important; }
+.map-popup strong { color: var(--win-text); font-size: 11.5px; font-weight: 600; }
+.map-popup span { color: var(--win-text-secondary); font-size: 10.5px; }
+:root[data-theme=dark] .map-popup strong { color: #fff; }
+:root[data-theme=dark] .map-popup span { color: rgba(255, 255, 255, .7); }
+.route-marker { border-color: var(--win-layer); box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+.input-marker { border-color: var(--win-layer); box-shadow: 0 1px 5px rgba(0, 0, 0, .35); }
+.input-marker.is-selected { box-shadow: 0 0 0 3px var(--win-accent-subtle), 0 1px 6px rgba(0, 0, 0, .4); }
+.camera-view { border-color: color-mix(in srgb, var(--win-accent) 55%, transparent); background: color-mix(in srgb, var(--win-accent) 14%, transparent); }
+
+/* Per-waypoint preview stepper (map command bar) ----------------------- */
+.wp-stepper {
+  position: absolute; z-index: 500; left: 50%; transform: translateX(-50%);
+  bottom: 16px; display: flex; align-items: center; gap: 2px;
+  padding: 4px; border-radius: var(--win-radius-popup);
+  background: var(--win-chrome-bg); border: 1px solid var(--win-chrome-border);
+  box-shadow: var(--win-chrome-shadow); backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+.wp-stepper button { width: 30px; height: 30px; border: 0; border-radius: var(--win-radius); background: transparent; color: var(--win-chrome-text); display: grid; place-items: center; }
+.wp-stepper button:hover:not(:disabled) { background: var(--win-subtle-hover); }
+.wp-stepper button:disabled { opacity: .38; }
+.wp-stepper-main { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 128px; padding: 2px 10px; border-radius: var(--win-radius); }
+.wp-stepper-main:hover { background: var(--win-subtle-hover); }
+.wp-stepper-main strong { font-size: 12px; font-weight: 600; color: var(--win-chrome-text); line-height: 1.25; }
+.wp-stepper-main span { font-size: 10px; color: var(--win-chrome-muted); }
+.wp-stepper-divider { width: 1px; height: 20px; background: var(--win-chrome-border); margin: 0 3px; }
+.wp-preview-ring { display: grid; place-items: center; }
+.wp-preview-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: var(--win-accent); box-shadow: 0 2px 8px rgba(0, 0, 0, .4); animation: wp-pulse 1.6s var(--win-ease) infinite; }
+@keyframes wp-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.28); } }
+
+/* Leaflet native controls --------------------------------------------- */
+.leaflet-control-zoom { border: 1px solid var(--win-chrome-border) !important; border-radius: var(--win-radius) !important; box-shadow: var(--win-chrome-shadow) !important; overflow: hidden; backdrop-filter: blur(28px) saturate(160%); }
+.leaflet-control-zoom a { background: var(--win-chrome-bg) !important; color: var(--win-chrome-text) !important; border-bottom-color: var(--win-chrome-border) !important; width: 30px !important; height: 30px !important; line-height: 30px !important; font-size: 15px !important; }
+.leaflet-control-zoom a:hover { background: var(--win-subtle-hover) !important; }
+.leaflet-control-attribution { background: var(--win-chrome-bg) !important; color: var(--win-chrome-muted) !important; border-radius: var(--win-radius) 0 0 0; font-size: 10px !important; padding: 2px 6px !important; backdrop-filter: blur(18px); }
+.leaflet-control-attribution a { color: var(--win-chrome-text) !important; }
+.leaflet-control-scale-line { background: var(--win-chrome-bg) !important; border-color: var(--win-chrome-border) !important; color: var(--win-chrome-text) !important; border-radius: 3px; font-size: 10px !important; padding: 1px 5px !important; }
+
+/* Waypoint list ------------------------------------------------------- */
+.waypoints-panel { background: var(--win-layer); border-color: var(--win-stroke); }
+.waypoint-tools { border-color: var(--win-divider); }
+.search-input { height: 32px; border-radius: var(--win-radius); background: var(--win-control); border: 1px solid var(--win-control-border); box-shadow: inset 0 -1px 0 var(--win-control-border-bottom); }
+.search-input svg { color: var(--win-text-tertiary); }
+.search-input input { color: var(--win-text); font-size: 12.5px; }
+.search-input input::placeholder { color: var(--win-text-tertiary); }
+.search-input:focus-within { border-color: var(--win-control-border); box-shadow: inset 0 -2px 0 var(--win-accent); background: var(--win-layer); }
+.waypoint-row { border-bottom-color: var(--win-divider); }
+.waypoint-row:hover { background: var(--win-subtle-hover); }
+.waypoint-row.is-current { background: var(--win-accent-subtle); box-shadow: inset 3px 0 0 var(--win-accent); }
+:root[data-theme=dark] .waypoint-row.is-current { background: var(--win-selection); }
+.waypoint-index { background: var(--win-control); color: var(--win-text-secondary); border-radius: 50%; font-weight: 600; }
+.waypoint-index.capture { background: var(--win-accent); color: #fff; }
+:root[data-theme=dark] .waypoint-index.capture { background: #4cc2ff; color: #003660; }
+.waypoint-main strong { color: var(--win-text); font-size: 12px; font-weight: 600; }
+.waypoint-main span { color: var(--win-text-secondary); font-size: 11px; }
+.row-delete { color: var(--win-text-tertiary); border-radius: var(--win-radius); }
+.row-delete:hover { background: var(--win-subtle-hover); color: var(--win-text); }
+.camera-badge { background: var(--win-accent-subtle); color: var(--win-accent); border-radius: 3px; }
+:root[data-theme=dark] .camera-badge { background: var(--win-selection); color: #77c0ee; }
+.waypoint-footer { border-top-color: var(--win-divider); background: var(--win-card); }
+.waypoint-footer span { color: var(--win-text-secondary); font-size: 11px; }
+.waypoint-footer button { color: var(--win-accent); font-size: 11.5px; font-weight: 600; border-radius: var(--win-radius); }
+.waypoint-footer button:hover { background: var(--win-subtle-hover); }
+:root[data-theme=dark] .waypoint-footer button { color: #6cb6ea; }
+.legend-dot { background: var(--win-text-tertiary); }
+.legend-dot.capture { background: var(--win-accent); }
+.empty-list { color: var(--win-text-secondary); font-size: 12px; }
+
+/* Files panel --------------------------------------------------------- */
+.files-panel { background: var(--win-layer); border-color: var(--win-stroke); }
+.files-summary { border-color: var(--win-stroke); background: var(--win-card); border-radius: var(--win-radius-popup); }
+.files-summary strong { color: var(--win-text); font-size: 12.5px; }
+.files-summary span { color: var(--win-text-secondary); font-size: 11.5px; }
+.folder-icon { background: var(--win-accent-subtle); color: var(--win-accent); border-radius: var(--win-radius); }
+:root[data-theme=dark] .folder-icon { color: #77c0ee; }
+.file-row { border-bottom-color: var(--win-divider); }
+.file-row:hover { background: var(--win-subtle-hover); }
+.file-main strong { color: var(--win-text); font-size: 12.5px; font-weight: 600; }
+.file-main span { color: var(--win-text-secondary); font-size: 11px; }
+.file-type { border-radius: var(--win-radius); box-shadow: none; font-weight: 700; }
+.empty-files { color: var(--win-text-secondary); }
+.empty-files strong { color: var(--win-text); }
+.current-output { border-color: var(--win-stroke); background: var(--win-card); border-radius: var(--win-radius-popup); }
+.current-output span { color: var(--win-text-secondary); }
+.current-output strong { color: var(--win-text); }
+
+/* Analysis / camera tabs --------------------------------------------- */
+.analysis-hero { background: var(--win-accent-subtle); border-color: var(--win-accent-border); border-radius: var(--win-radius-popup); }
+.analysis-hero span { color: var(--win-text-secondary); }
+.analysis-hero strong { color: var(--win-accent); }
+:root[data-theme=dark] .analysis-hero { background: rgba(0, 120, 212, .14); border-color: rgba(0, 120, 212, .34); }
+:root[data-theme=dark] .analysis-hero strong { color: #77c0ee; }
+.analysis-bar { background: var(--win-divider); }
+.analysis-bar i { background: var(--win-accent); }
+:root[data-theme=dark] .analysis-bar i { background: #4cc2ff; }
+.metric-list div { border-color: var(--win-divider); }
+.metric-list span { color: var(--win-text-secondary); }
+.metric-list strong { color: var(--win-text); font-weight: 600; }
+.warning-list { background: #fff4e5; border-color: #f3dcb4; border-radius: var(--win-radius-popup); }
+.warning-list strong, .warning-list span { color: #7a4d0c; }
+:root[data-theme=dark] .warning-list { background: rgba(202, 136, 8, .14); border-color: rgba(202, 136, 8, .36); }
+:root[data-theme=dark] .warning-list strong, :root[data-theme=dark] .warning-list span { color: #f8dcaa; }
+.all-clear { background: var(--win-accent-subtle); border-color: var(--win-accent-border); border-radius: var(--win-radius-popup); color: var(--win-accent); }
+:root[data-theme=dark] .all-clear { background: rgba(0, 120, 212, .14); border-color: rgba(0, 120, 212, .34); color: #77c0ee; }
+.tab-placeholder h3, .tab-placeholder p { color: var(--win-text); }
+.tab-placeholder p { color: var(--win-text-secondary); }
+.placeholder-icon { background: var(--win-control); color: var(--win-accent); border-radius: var(--win-radius); }
+.spec-grid div { border-color: var(--win-divider); background: var(--win-card); }
+.spec-grid span { color: var(--win-text-secondary); }
+.spec-grid strong { color: var(--win-text); }
+
+/* Bottom command bar -------------------------------------------------- */
+.map-bottom-actions { background: var(--win-layer); border-top: 1px solid var(--win-stroke); }
+.count-badge { background: var(--win-accent-subtle); color: var(--win-accent); border-radius: 9px; font-weight: 700; }
+:root[data-theme=dark] .count-badge { background: var(--win-selection); color: #77c0ee; }
+.workspace-grid.is-single { background: var(--win-page); }
+.workspace-grid.is-single > section { border-color: var(--win-stroke); box-shadow: var(--win-shadow-8); background: var(--win-layer); }
+
+/* Toast as a Win11 flyout -------------------------------------------- */
+.toast {
+  bottom: 126px; min-width: 220px; max-width: 380px; padding: 11px 12px; gap: 9px;
+  border-radius: var(--win-radius-popup); font-size: 12.5px;
+  background: var(--win-layer); color: var(--win-text);
+  border: 1px solid var(--win-stroke); box-shadow: var(--win-shadow-16);
+}
+:root[data-theme=dark] .toast { background: #2c2c2c; border-color: rgba(255, 255, 255, .12); color: #fff; }
+.toast.success { border-left: 3px solid var(--win-accent); }
+.toast.error { border-left: 3px solid #c42b1c; }
+.toast.info { border-left: 3px solid var(--win-text-tertiary); }
+.toast-icon { background: transparent; color: var(--win-accent); border-radius: 0; width: 16px; font-size: 12px; font-weight: 700; }
+.toast.error .toast-icon { color: #c42b1c; }
+.toast.info .toast-icon { color: var(--win-text-secondary); }
+:root[data-theme=dark] .toast.error .toast-icon { color: #ff9b94; }
+:root[data-theme=dark] .toast.success .toast-icon { color: #6cb6ea; }
+.toast button { color: var(--win-text-secondary); }
+.toast button:hover { color: var(--win-text); }
+
+/* Angle dial + heading mode segmented -------------------------------- */
+.segmented { border: 1px solid var(--win-control-border); border-radius: var(--win-radius); background: var(--win-control); padding: 2px; gap: 2px; }
+.segmented button { border-radius: 3px; color: var(--win-text-secondary); font-size: 11.5px; font-weight: 600; padding: 5px 6px; background: transparent; }
+.segmented button:hover { background: var(--win-subtle-hover); color: var(--win-text); }
+.segmented button.is-active { background: var(--win-accent); color: #fff; }
+:root[data-theme=dark] .segmented button.is-active { background: #4cc2ff; color: #003660; }
+.dial-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 4px 0 2px; }
+.angle-dial { display: flex; align-items: center; gap: 11px; flex: 1 1 210px; min-width: 0; touch-action: none; cursor: grab; }
+.angle-dial:active { cursor: grabbing; }
+.angle-dial svg { display: block; width: 78px; height: 78px; flex-shrink: 0; border-radius: 50%; }
+.dial-face { fill: var(--win-control); stroke: var(--win-control-border-bottom); stroke-width: 1; }
+.angle-dial:hover .dial-face { fill: var(--win-control-hover); }
+.dial-tick { stroke: var(--win-text-tertiary); stroke-width: 1; opacity: .55; }
+.dial-cardinal { fill: var(--win-text-secondary); font-size: 9px; font-weight: 600; }
+.dial-cardinal.north { fill: var(--win-accent); }
+.dial-needle { stroke: var(--win-accent); stroke-width: 3; stroke-linecap: round; }
+.dial-tail { stroke: var(--win-text-tertiary); stroke-width: 3; stroke-linecap: round; }
+.dial-knob { fill: var(--win-accent); stroke: var(--win-layer); stroke-width: 2; }
+.angle-dial:focus-visible { outline: 2px solid var(--win-focus); outline-offset: 2px; }
+.dial-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dial-row > .field,
+.dial-row > .two-fields { flex: 1 1 100%; }
+.dial-copy strong { font-size: 12.5px; color: var(--win-text); font-weight: 600; }
+.dial-copy small { font-size: 11px; color: var(--win-text-secondary); }
+
+
+/* Mobile shell -------------------------------------------------------- */
+.mobile-quickbar {
+  border-radius: var(--win-radius-popup); background: var(--win-layer);
+  border: 1px solid var(--win-stroke); box-shadow: var(--win-shadow-16);
+}
+:root[data-theme=dark] .mobile-quickbar { background: #2c2c2c; border-color: rgba(255, 255, 255, .12); }
+.mobile-quickbar button { border-radius: var(--win-radius); color: var(--win-text-secondary); font-weight: 600; }
+.mobile-quickbar button:hover, .mobile-quickbar button.is-active { background: var(--win-subtle-hover); color: var(--win-text); }
+.mobile-quickbar button.mobile-export { background: var(--win-accent); color: #fff; box-shadow: none; }
+.mobile-quickbar button.mobile-export:hover { background: var(--win-accent-hover); color: #fff; }
+:root[data-theme=dark] .mobile-quickbar button.mobile-export { background: #4cc2ff; color: #003660; }
+.mobile-sheet { border-radius: 8px 8px 0 0; background: var(--win-layer); box-shadow: 0 -2px 24px rgba(0, 0, 0, .22); }
+:root[data-theme=dark] .mobile-sheet { background: #272727; }
+.sheet-handle { background: var(--win-control-border-bottom); border-radius: 2px; }
+.sheet-header h2 { color: var(--win-text); }
+.sheet-header p { color: var(--win-text-secondary); }
+.sheet-missions button strong { color: var(--win-text); }
+.sheet-missions button small { color: var(--win-text-secondary); }
+.mobile-sheet .settings-panel, .mobile-sheet .waypoints-panel { background: var(--win-layer); }
+.mobile-sheet-backdrop.is-visible { background: rgba(0, 0, 0, .42); }
+
+/* Win11 focus rect + scrollbars -------------------------------------- */
+.button:focus-visible, .icon-button:focus-visible, .field input:focus-visible, .number-input input:focus-visible,
+input[type='range']:focus-visible, select:focus-visible, .segmented button:focus-visible,
+.planning-item:focus-visible, .waypoint-main:focus-visible, .file-main:focus-visible,
+.map-tool-stack button:focus-visible, .map-layer-controls > button:focus-visible,
+.drawing-pill:focus-visible, .floating-menu button:focus-visible, .camera-select-trigger:focus-visible,
+.wp-stepper button:focus-visible, .wp-stepper-main:focus-visible, .row-delete:focus-visible,
+.waypoint-footer button:focus-visible, .layer-reset-button:focus-visible {
+  outline: 2px solid var(--win-focus); outline-offset: -2px;
+}
+* { scrollbar-width: thin; scrollbar-color: var(--win-control-border-bottom) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--win-control-border-bottom); border: 3px solid transparent; background-clip: content-box; border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background-color: var(--win-text-tertiary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wp-preview-dot { animation: none; }
+}
+
+/* Preview marker on the map ------------------------------------------ */
+.preview-marker-shell { background: transparent; }
+.preview-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(0, 95, 184, .55), 0 4px 14px rgba(0, 0, 0, .45); animation: preview-ring-pulse 1.7s var(--win-ease-out) infinite; }
+.preview-core { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--preview-color, var(--win-accent)); box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+@keyframes preview-ring-pulse { 0% { transform: scale(.72); opacity: .35; } 55% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.16); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .preview-ring { animation: none; opacity: 1; transform: none; } }
+
+/* Dial internals ------------------------------------------------------ */
+.dial-arrow { fill: var(--win-accent); }
+.dial-horizon { stroke: var(--win-text-tertiary); stroke-width: 1; stroke-dasharray: 3 3; opacity: .8; }
+.dial-arc { fill: none; stroke: var(--win-accent); stroke-width: 1.4; opacity: .45; }
+.dial-tip { fill: var(--win-accent); stroke: var(--win-layer); stroke-width: 1.6; }
+.angle-dial.is-pitch .dial-needle { stroke: var(--win-accent); }
+:root[data-theme=dark] .dial-arrow, :root[data-theme=dark] .dial-tip { fill: #4cc2ff; }
+:root[data-theme=dark] .dial-needle, :root[data-theme=dark] .dial-knob, :root[data-theme=dark] .dial-arc { stroke: #4cc2ff; }
+:root[data-theme=dark] .dial-knob { fill: #4cc2ff; }
+
+/* Field hints + stacked pairs ---------------------------------------- */
+.field-hint { margin: -2px 0 8px; font-size: 11px; line-height: 1.5; color: var(--win-text-secondary); }
+.field-hint.subtle { color: var(--win-text-tertiary); }
+.dial-row .two-fields { margin-bottom: 0; }
+
+@media (max-width: 900px) {
+  .wp-stepper { bottom: 76px; left: 12px; right: 12px; transform: none; justify-content: center; }
+  .map-bottom-card { bottom: 128px; }
+  .toast { bottom: 178px; }
+}
