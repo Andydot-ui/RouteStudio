@@ -19,6 +19,8 @@ export type CameraProfile = {
   sensorHeight: number
   focalLength: number
   activeFocalLength?: number
+  wpmlDroneEnumValue?: number
+  wpmlPayloadEnumValue?: number
   imageWidth: number
   imageHeight: number
   maxFlightHeight: number
@@ -53,7 +55,7 @@ export type PlannerSettings = {
   altitude: number
   speed: number
   takeoffSecurityHeight: number
-  finishAction: 'goHome' | 'hover' | 'land'
+  finishAction: 'goHome' | 'noAction' | 'autoLand'
   gimbalPitch: number
   headingMode: 'followWayline' | 'fixed' | 'manual'
   headingAngle: number

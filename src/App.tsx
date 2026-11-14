@@ -6,7 +6,7 @@ import { MapWorkspace } from './components/MapWorkspace'
 import { WaypointList, FilesPanel, type SavedMission } from './components/Panels'
 import { MobileLayer, type MobilePanel } from './components/MobileLayer'
 import { PlannerGlyph } from './components/PlannerGlyph'
-import { buildKmz, buildWaylinesXml, downloadBytes, importMissionBuffer } from './lib/dji'
+import { buildKmz, buildWaylinesXml, downloadBytes, importMissionBuffer, validateWpmlMission } from './lib/dji'
 import { calculatePlan, createDemoDraft, DEFAULT_DRAFT, PLANNER_DEFS, sanitizeSettings } from './lib/planners'
 import type { BaseMap } from './components/MapCanvas'
 import type { LngLat, PlannerDraft, PlannerKind, PlannerSettings, Waypoint } from './lib/types'
@@ -71,7 +71,7 @@ function App() {
   const deleteMission = (id: string) => { const next = missions.filter((item) => item.id !== id); setMissions(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); postToast('已删除保存的任务', 'info') }
   const importFile = () => fileRef.current?.click()
   const onImport = async (file: File) => { try { const imported = importMissionBuffer(await file.arrayBuffer(), file.name); commit(imported.draft); setSavedName(imported.draft.settings.name); setWorkspaceMode('planner'); setDrawing(false); setMobilePanel(null); postToast(`已导入 ${imported.draft.input.length} 个航点`) } catch (error) { postToast(error instanceof Error ? error.message : '文件导入失败', 'error') } finally { if (fileRef.current) fileRef.current.value = '' } }
-  const exportKmz = () => { if (!result.waypoints.length) { postToast('请先绘制航线再导出', 'error'); return } downloadBytes(buildKmz(result, draft.settings, draft.settings.name), `${safeFilename(draft.settings.name)}.kmz`, 'application/vnd.google-earth.kmz'); postToast('DJI KMZ 已生成，可导入 DJI Fly') }
+  const exportKmz = () => { if (!result.waypoints.length) { postToast('请先绘制航线再导出', 'error'); return } const issues = validateWpmlMission(result, draft.settings); const error = issues.find((issue) => issue.level === 'error'); if (error) { postToast(`${error.field}: ${error.message}`, 'error'); return } downloadBytes(buildKmz(result, draft.settings, draft.settings.name), `${safeFilename(draft.settings.name)}.kmz`, 'application/vnd.google-earth.kmz'); const warning = issues.find((issue) => issue.level === 'warning'); postToast(warning ? `KMZ 已生成；${warning.message}` : 'DJI KMZ 已生成，可导入 DJI Fly') }
   const exportKml = () => { if (!result.waypoints.length) { postToast('请先绘制航线再导出', 'error'); return } downloadBytes(new TextEncoder().encode(buildWaylinesXml(result, draft.settings, draft.settings.name)), `${safeFilename(draft.settings.name)}_waylines.wpml`, 'application/xml'); postToast('WPML 文件已下载') }
   const exportJson = () => { downloadBytes(new TextEncoder().encode(JSON.stringify({ version: 1, kind: draft.kind, settings: draft.settings, input: draft.input, result }, null, 2)), `${safeFilename(draft.settings.name)}.route.json`, 'application/json'); postToast('规划数据已下载') }
   const clearAll = () => { commit({ ...draft, input: [], importedWaypoints: undefined, selectedIndex: null }); setDrawing(true); postToast('画布已清空', 'info') }
