@@ -76,44 +76,47 @@ export const PLANNER_DEFS: PlannerDefinition[] = [
 ]
 
 export const CAMERAS: CameraProfile[] = [
+  // focalLength is kept as an equivalent focal length for labels; activeFocalLength is
+  // the physical lens value used in footprint calculations when known.
+
   {
     id: 'mavic4pro', name: 'DJI Mavic 4 Pro', subtitle: '三摄旗舰 · 1 亿像素主摄',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 10000, imageHeight: 7500,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 10000, imageHeight: 7500,
     maxFlightHeight: 500, droneEnumValue: 100, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mavic3pro', name: 'DJI Mavic 3 Pro', subtitle: '三摄航拍 · 4/3 CMOS',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 5280, imageHeight: 3956,
     maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mavic3classic', name: 'DJI Mavic 3 Classic', subtitle: '经典航拍 · 4/3 CMOS',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 5280, imageHeight: 3956,
     maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mini5pro', name: 'DJI Mini 5 Pro', subtitle: '轻量航拍 · 1 英寸传感器',
-    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 8192, imageHeight: 6144,
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, activeFocalLength: 8.8, imageWidth: 8192, imageHeight: 6144,
     maxFlightHeight: 500, droneEnumValue: 100, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mini4pro', name: 'DJI Mini 4 Pro', subtitle: '轻量航拍 · 1/1.3 英寸传感器',
-    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, activeFocalLength: 6.72, imageWidth: 8064, imageHeight: 6048,
     maxFlightHeight: 500, droneEnumValue: 68, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mini4k', name: 'DJI Mini 4K', subtitle: '入门航拍 · 1/2.3 英寸传感器',
-    sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 24, imageWidth: 3840, imageHeight: 2160,
+    sensorWidth: 6.17, sensorHeight: 4.55, focalLength: 24, activeFocalLength: 4.5, imageWidth: 3840, imageHeight: 2160,
     maxFlightHeight: 500, droneEnumValue: 68, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'air3s', name: 'DJI Air 3S', subtitle: '双摄航测 · 1 英寸主摄',
-    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 8192, imageHeight: 6144,
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, activeFocalLength: 8.8, imageWidth: 8192, imageHeight: 6144,
     maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'air3', name: 'DJI Air 3', subtitle: '双摄航拍 · 1/1.3 英寸主摄',
-    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, activeFocalLength: 6.72, imageWidth: 8064, imageHeight: 6048,
     maxFlightHeight: 500, droneEnumValue: 77, family: 'consumer', waypoint: 'native', exportMode: 'generic',
   },
   {
@@ -128,7 +131,7 @@ export const CAMERAS: CameraProfile[] = [
   },
   {
     id: 'zeppelin', name: 'DJI Zeppelin', subtitle: '系留航拍平台 · 广角主摄',
-    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, imageWidth: 8192, imageHeight: 6144,
+    sensorWidth: 13.2, sensorHeight: 8.8, focalLength: 24, activeFocalLength: 8.8, imageWidth: 8192, imageHeight: 6144,
     maxFlightHeight: 500, droneEnumValue: 100, family: 'consumer', waypoint: 'limited', exportMode: 'generic',
   },
   {
@@ -138,42 +141,42 @@ export const CAMERAS: CameraProfile[] = [
   },
   {
     id: 'mavic3e', name: 'DJI Mavic 3E', subtitle: '行业测绘 · 机械快门',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 5280, imageHeight: 3956,
     maxFlightHeight: 500, droneEnumValue: 66, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mavic3t', name: 'DJI Mavic 3T', subtitle: '行业巡检 · 热成像',
-    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, activeFocalLength: 6.72, imageWidth: 8064, imageHeight: 6048,
     maxFlightHeight: 500, droneEnumValue: 67, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'mavic3m', name: 'DJI Mavic 3M', subtitle: '行业多光谱 · 农业巡检',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 5280, imageHeight: 3956,
     maxFlightHeight: 500, droneEnumValue: 67, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'matrice4e', name: 'DJI Matrice 4E', subtitle: '行业测绘 · 三摄广角测绘',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 5280, imageHeight: 3956,
     maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'matrice4t', name: 'DJI Matrice 4T', subtitle: '行业巡检 · 热成像与夜视',
-    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, activeFocalLength: 6.72, imageWidth: 8064, imageHeight: 6048,
     maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'matrice4d', name: 'DJI Matrice 4D', subtitle: '高性能行业平台 · 测绘',
-    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, imageWidth: 5280, imageHeight: 3956,
+    sensorWidth: 17.3, sensorHeight: 13, focalLength: 24, activeFocalLength: 12.29, imageWidth: 5280, imageHeight: 3956,
     maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'matrice4td', name: 'DJI Matrice 4TD', subtitle: '高性能行业平台 · 热成像',
-    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, activeFocalLength: 6.72, imageWidth: 8064, imageHeight: 6048,
     maxFlightHeight: 500, droneEnumValue: 89, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
     id: 'matrice5t', name: 'DJI Matrice 5T', subtitle: '轻型行业旗舰 · 激光与毫米波雷达',
-    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, imageWidth: 8064, imageHeight: 6048,
+    sensorWidth: 9.6, sensorHeight: 7.2, focalLength: 24, activeFocalLength: 6.72, imageWidth: 8064, imageHeight: 6048,
     maxFlightHeight: 500, droneEnumValue: 100, family: 'enterprise', waypoint: 'native', exportMode: 'generic',
   },
   {
@@ -571,13 +574,15 @@ export function buildOffsetLegs(
 }
 
 export function cameraFootprint(camera: CameraProfile, altitude: number) {
-  const width = (camera.sensorWidth / camera.focalLength) * altitude
-  const height = (camera.sensorHeight / camera.focalLength) * altitude
+  const actualFocalLength = camera.activeFocalLength ?? camera.focalLength
+  const width = (camera.sensorWidth / actualFocalLength) * altitude
+  const height = (camera.sensorHeight / actualFocalLength) * altitude
   return { width, height }
 }
 
 export function gsdFor(camera: CameraProfile, altitude: number) {
-  return (camera.sensorWidth * altitude * 100) / (camera.focalLength * camera.imageWidth)
+  const actualFocalLength = camera.activeFocalLength ?? camera.focalLength
+  return (camera.sensorWidth * altitude * 100) / (actualFocalLength * camera.imageWidth)
 }
 
 export function buildPoints(
@@ -625,7 +630,7 @@ export function mergeLegs(legs: FlightLeg[]): FlightLeg[] {
   return result
 }
 
-export function makeWaypoints(legs: FlightLeg[], settings: PlannerSettings, camera: CameraProfile): Waypoint[] {
+export function makeWaypoints(legs: FlightLeg[], settings: PlannerSettings, _camera: CameraProfile): Waypoint[] {
   const result: Waypoint[] = []
   for (const leg of legs) {
     if (!leg.points.length) continue
@@ -634,31 +639,29 @@ export function makeWaypoints(legs: FlightLeg[], settings: PlannerSettings, came
       : leg.points.length === 2
         ? [leg.points[0], leg.points[1]]
         : leg.points
-    for (const pt of samples) {
-      const index = result.length
-      const prev = result[index - 1]
-      const nextLegPoint = leg.points.length > 1 ? leg.points[leg.points.length - 1] : pt
+    for (let index = 0; index < samples.length; index += 1) {
+      const point = samples[index]
+      const next = samples[index + 1] ?? point
       const yaw = settings.headingMode === 'fixed'
         ? settings.headingAngle
         : settings.headingMode === 'manual'
           ? previousYaw(result, settings.headingAngle)
-          : bearing(pt, nextLegPoint)
+          : bearing(point, next)
       result.push({
-        lon: pt[0],
-        lat: pt[1],
+        lon: point[0],
+        lat: point[1],
         height: settings.altitude,
         speed: settings.speed,
         pitch: leg.pitch ?? settings.gimbalPitch,
         yaw,
         takePhoto: settings.photosPerPoint && leg.kind === 'capture',
-        actions: leg.kind === 'capture' ? (settings.photosPerPoint ? ['takePhoto', 'gimbalRotate'] : ['gimbalRotate']) : ['gimbalRotate'],
+        actions: leg.kind === 'capture' ? (settings.photosPerPoint ? ['takePhoto', 'gimbalRotate'] : ['gimbalRotate']) : ['gimbalRotate']
       })
-      void prev
-      void camera
     }
   }
   return dedupeWaypoints(result)
 }
+
 
 function previousYaw(result: Waypoint[], fallback: number) {
   return result.length ? result[result.length - 1].yaw : fallback
@@ -690,9 +693,10 @@ function resultBase(
     ? Math.max(2, settings.lineSpacing)
     : Math.max(2, footprint.height * (1 - settings.sideOverlap / 100))
   const photoInterval = Math.max(1, footprint.width * (1 - settings.forwardOverlap / 100))
-  const captureLength = combined.filter((leg) => leg.kind === 'capture').reduce((total, leg) => total + polylineLength(leg.points), 0)
-  const pathLength = polylineLength(waypoints.map((point) => [point.lon, point.lat] as LngLat))
+  const pathLength = combined.reduce((total, leg) => total + polylineLength(leg.points), 0)
   const captureCount = waypoints.filter((waypoint) => waypoint.takePhoto).length
+  const captureMeters = combined.filter((leg) => leg.kind === 'capture').reduce((total, leg) => total + polylineLength(leg.points), 0)
+  const photoCount = Math.max(1, Math.ceil(captureMeters / Math.max(1, photoInterval)))
   const estimatedBattery = Math.max(1, Math.ceil((pathLength + waypoints.length * 2) / Math.max(5, settings.speed) / 60))
   return {
     legs: combined,
@@ -700,13 +704,17 @@ function resultBase(
     source: [],
     area: 0,
     pathLength,
-    captureLength,
+    captureLength: combined.filter((leg) => leg.kind === 'capture').reduce((total, leg) => total + polylineLength(leg.points), 0),
     gsd,
     footprint,
     lineSpacing,
     photoInterval,
+    recommendedLineSpacing: lineSpacing,
+    captureLineSpacing: lineSpacing,
     estimatedBattery,
     captureCount,
+    mainLineCount: combined.filter((leg) => leg.kind === 'capture').length,
+    photoCount,
     completed: false,
     warnings: [],
   }
@@ -740,8 +748,12 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
       footprint,
       lineSpacing: footprint.height * (1 - settings.sideOverlap / 100),
       photoInterval: footprint.width * (1 - settings.forwardOverlap / 100),
+      recommendedLineSpacing: footprint.height * (1 - settings.sideOverlap / 100),
+      captureLineSpacing: footprint.height * (1 - settings.sideOverlap / 100),
       estimatedBattery: Math.max(1, Math.ceil(pathLength / Math.max(5, settings.speed) / 60)),
       captureCount,
+      mainLineCount: 1,
+      photoCount: imported.filter((point) => point.takePhoto).length,
       completed: true,
       warnings: ['此任务按导入航点原序保存；修改规划参数会按当前航线类型重新计算。'],
     }
@@ -756,17 +768,18 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
     legs = buildPoints(input, settings)
     completed = input.length > 0
   } else if (draft.kind === 'line') {
-    legs = [{ id: 'line-0', points: samplePath(input, photoInterval), kind: 'capture' }]
+    legs = [{ id: 'line-0', points: samplePath(input, Math.max(photoInterval, settings.splitDistance)), kind: 'capture' }]
     completed = input.length >= 2
   } else if (draft.kind === 'corridor') {
     legs = buildOffsetLegs(input, settings.corridorCount, settings.corridorOffset, settings.rotation).map((leg) => ({
       ...leg,
-      points: samplePath(leg.points, lineSpacing),
+      points: samplePath(leg.points, Math.max(photoInterval, settings.splitDistance)),
     }))
     completed = input.length >= 2
   } else if (draft.kind === 'grid' || draft.kind === 'oblique') {
     const baseLegs = buildLawnmowerRings(input, lineSpacing, settings.rotation)
-    legs = baseLegs.map((leg) => ({ ...leg, points: samplePath(leg.points, photoInterval) }))
+    const splitDistance = Math.max(10, Math.round(settings.splitDistance / 10) * 10)
+    legs = baseLegs.map((leg) => ({ ...leg, points: samplePath(leg.points, splitDistance) }))
     if (draft.kind === 'oblique') {
       const directions = settings.obliqueDirections
       const horizontalOffset = Math.min(55, settings.altitude * 0.32)
@@ -837,6 +850,8 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
     footprint,
     lineSpacing,
     photoInterval,
+    recommendedLineSpacing: lineSpacing,
+    captureLineSpacing: lineSpacing,
   }
 }
 

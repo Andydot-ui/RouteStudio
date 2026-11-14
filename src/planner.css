@@ -23,6 +23,7 @@
 .summary-heading span:not(.summary-icon) { color:#738a7c; font-size:9px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
 .summary-stats { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid color-mix(in srgb,var(--planner-color) 12%,#e4ece6); padding-top:10px; margin-top:10px; }
 .summary-stats div { display:flex; flex-direction:column; padding-left:10px; border-left:1px solid color-mix(in srgb,var(--planner-color) 12%,#e4ece6); }
+.summary-stats.four { grid-template-columns:repeat(4,1fr); }
 .summary-stats div:first-child { border-left:0; padding-left:0; }
 .summary-stats strong { color:#355643; font-family:Manrope,sans-serif; font-size:11px; font-weight:700; }
 .summary-stats span { color:#8a9b90; font-size:8.5px; margin-top:2px; }
@@ -43,6 +44,13 @@
 .number-input input { border:0; background:transparent; height:100%; padding:0 7px; width:100%; color:#30443a; font-size:11px; outline:0; }
 .number-input span { padding-right:8px; color:#94a198; font-size:9px; white-space:nowrap; }
 .two-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.altitude-split { margin-top:10px; }
+.planning-note { min-height:58px; border:1px dashed #dce7df; background:#f8fbf9; border-radius:6px; padding:8px; display:flex; flex-direction:column; justify-content:center; gap:3px; }
+.planning-note span { font-size:9px; color:#72877a; }
+.planning-note strong { font-size:9px; color:#467758; }
+:root[data-theme=dark] .planning-note { border-color:#34483b; background:#17251d; }
+:root[data-theme=dark] .planning-note span { color:#90a599; }
+:root[data-theme=dark] .planning-note strong { color:#9dd4ad; }
 .info-line { color:#82958a; display:flex; flex-wrap:wrap; gap:7px 12px; margin-top:11px; font-size:9px; line-height:1.45; }
 .info-line span { display:flex; align-items:center; gap:4px; }
 .info-line strong { color:#4e8062; font-weight:600; }

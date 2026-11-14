@@ -6,7 +6,7 @@ import type { LngLat, PlannerDraft, PlannerResult } from '../lib/types'
 
 const BASE_MAP_LABELS: Record<BaseMap, string> = { satellite: '卫星影像', streets: '街道地图', terrain: '地形地图' }
 
-export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, setShowNumbers, showCamera, setShowCamera, drawing, setDrawing, onAddPoint, onSetInput, onSelectInput, onLocate, onClear, onUndo, onNotice }: {
+export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, setShowNumbers, showCamera, setShowCamera, drawing, setDrawing, onAddPoint, onSetInput, onSelectInput, onLocate, onClear, onUndo, onFinishPolygon, onNotice }: {
   draft: PlannerDraft
   result: PlannerResult
   baseMap: BaseMap
@@ -23,6 +23,7 @@ export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, 
   onLocate: (point: LngLat) => void
   onClear: () => void
   onUndo: () => void
+  onFinishPolygon: () => void
   onNotice: (message: string, tone?: 'success' | 'error' | 'info') => void
 }) {
   const [mapMenu, setMapMenu] = useState(false)
@@ -30,12 +31,12 @@ export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, 
   const def = PLANNER_DEFS.find((item) => item.kind === draft.kind) ?? PLANNER_DEFS[0]
   const amount = draft.input.length
   return <main className="map-workspace">
-    <MapCanvas draft={draft} result={result} baseMap={baseMap} showNumbers={showNumbers} showCamera={showCamera} drawing={drawing} onAddPoint={onAddPoint} onSetInput={onSetInput} onSelectInput={onSelectInput} onLocate={onLocate}/>
+    <MapCanvas draft={draft} result={result} baseMap={baseMap} showNumbers={showNumbers} showCamera={showCamera} drawing={drawing} onAddPoint={onAddPoint} onSetInput={onSetInput} onSelectInput={onSelectInput} onLocate={onLocate} onFinishPolygon={onFinishPolygon}/>
     <div className="map-top-left">
       <div className="map-layer-controls"><button type="button" onClick={() => { setMapMenu((value) => !value); setLayersMenu(false) }}><Layers3 size={17}/><span>{BASE_MAP_LABELS[baseMap]}</span><ChevronDown size={13}/></button>{mapMenu && <div className="floating-menu map-menu">{Object.entries(BASE_MAP_LABELS).map(([key, label]) => <button key={key} className={baseMap === key ? 'is-selected' : ''} type="button" onClick={() => { setBaseMap(key as BaseMap); setMapMenu(false) }}>{baseMap === key && <span>✓</span>}{label}</button>)}</div>}</div>
     </div>
     <div className="map-top-right">
-      <button type="button" className={`floating-pill drawing-pill ${drawing ? 'is-active' : ''}`} onClick={() => setDrawing((value) => !value)}><span className="drawing-status-icon"><Pencil size={16}/></span><span className="drawing-pill-copy"><strong>{drawing ? '正在绘制' : '开始绘制'}</strong><small>{drawing ? '左键添加节点 · 右键拖动地图' : def.hint}</small></span></button>
+      <button type="button" className={`floating-pill drawing-pill ${drawing ? 'is-active' : ''}`} onClick={() => setDrawing((value) => !value)}><span className="drawing-status-icon"><Pencil size={16}/></span><span className="drawing-pill-copy"><strong>{drawing ? '正在绘制' : '开始绘制'}</strong><small>{drawing ? (draft.kind === 'points' ? '连续单击添加 · 右键拖动地图' : '单击连续绘制 · 双击完成 · 右键拖动') : def.hint}</small></span></button>
       <div className="map-tool-stack"><button type="button" title="撤销上一步" onClick={onUndo}><span className="undo-mark">↶</span></button><button type="button" title="图层面板" className={layersMenu ? 'is-active' : ''} onClick={() => { setLayersMenu((value) => !value); setMapMenu(false) }}><Layers3 size={17}/></button><button type="button" title="航点编号" className={showNumbers ? 'is-active' : ''} onClick={() => setShowNumbers((value) => !value)}><span className="small-number">#</span></button><button type="button" title="相机视锥" className={showCamera ? 'is-active' : ''} onClick={() => setShowCamera((value) => !value)}><Eye size={17}/></button><button type="button" title="定位当前位置" onClick={() => navigator.geolocation?.getCurrentPosition((position) => onLocate([position.coords.longitude, position.coords.latitude]), () => onNotice('浏览器未获得定位权限', 'info'))}><LocateFixed size={17}/></button></div>
       {layersMenu && <div className="floating-menu layer-menu"><div className="floating-menu-title">地图显示 <button type="button" onClick={() => setLayersMenu(false)}><X size={14}/></button></div><label><input type="checkbox" checked={showNumbers} onChange={(event) => setShowNumbers(event.target.checked)}/><span>显示航点编号</span></label><label><input type="checkbox" checked={showCamera} onChange={(event) => setShowCamera(event.target.checked)}/><span>显示相机视锥</span></label><div className="layer-line"/><button className="layer-reset-button" type="button" onClick={() => { onClear(); setDrawing(true); setLayersMenu(false) }}><Plus size={14}/>新建绘制区域</button></div>}
     </div>

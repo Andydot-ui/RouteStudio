@@ -18,6 +18,7 @@ export type CameraProfile = {
   sensorWidth: number
   sensorHeight: number
   focalLength: number
+  activeFocalLength?: number
   imageWidth: number
   imageHeight: number
   maxFlightHeight: number
@@ -96,8 +97,12 @@ export type PlannerResult = {
   footprint: { width: number; height: number }
   lineSpacing: number
   photoInterval: number
+  recommendedLineSpacing: number
+  captureLineSpacing: number
   estimatedBattery: number
   captureCount: number
+  mainLineCount: number
+  photoCount: number
   completed: boolean
   warnings: string[]
 }

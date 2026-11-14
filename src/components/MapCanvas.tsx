@@ -16,6 +16,7 @@ type MapCanvasProps = {
   onSetInput: (points: LngLat[]) => void
   onSelectInput: (index: number | null) => void
   onLocate: (point: LngLat) => void
+  onFinishPolygon: () => void
   onMapReady?: () => void
 }
 
@@ -57,17 +58,18 @@ export function MapCanvas({
   onSetInput,
   onSelectInput,
   onLocate,
+  onFinishPolygon,
   onMapReady,
 }: MapCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const stateRef = useRef<MapState | null>(null)
-  const callbacksRef = useRef({ onAddPoint, onSetInput, onSelectInput, onLocate, onMapReady })
+  const callbacksRef = useRef({ onAddPoint, onSetInput, onSelectInput, onLocate, onFinishPolygon, onMapReady })
   const draftRef = useRef(draft)
   const drawingRef = useRef(drawing)
   const mapReadyRef = useRef(false)
 
   useEffect(() => {
-    callbacksRef.current = { onAddPoint, onSetInput, onSelectInput, onLocate, onMapReady }
+    callbacksRef.current = { onAddPoint, onSetInput, onSelectInput, onLocate, onFinishPolygon, onMapReady }
     draftRef.current = draft
     drawingRef.current = drawing
   })
@@ -101,6 +103,9 @@ export function MapCanvas({
     })
     map.on('dblclick', (event: L.LeafletMouseEvent) => {
       L.DomEvent.preventDefault(event.originalEvent)
+      if (!drawingRef.current) return
+      const kind = draftRef.current.kind
+      if (kind !== 'points' && draftRef.current.input.length >= 3) callbacksRef.current.onFinishPolygon()
     })
 
     // Middle mouse and right mouse drag pan the canvas. The native context menu is
