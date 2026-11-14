@@ -14,64 +14,14 @@ import type {
 
 export const PLANNER_DEFS: PlannerDefinition[] = [
   {
-    kind: 'points',
-    label: '自定义航点',
-    shortLabel: '航点',
-    desc: '逐点布置并单独设置高度与相机动作',
-    hint: '在地图上连续点击，添加需要定点拍摄的位置',
-    color: '#577f2d',
-    tint: '#eff5e9',
-    icon: '/assets/hangdian.png',
-  },
-  {
-    kind: 'line',
-    label: '单条航线',
-    shortLabel: '等距航点',
-    desc: '沿一条路径按间距生成连续航点',
-    hint: '依次点击起点、路径节点和终点，双击完成',
-    color: '#3845df',
-    tint: '#eef0ff',
-    icon: '/assets/hangdian.png',
-  },
-  {
-    kind: 'corridor',
-    label: '航带航线',
-    shortLabel: '多条航线',
-    desc: '沿中心线生成左右多条采集平行航线',
-    hint: '沿道路、河道或带状区域点击中心线',
-    color: '#315994',
-    tint: '#edf3fa',
-    icon: '/assets/hangdai.png',
-  },
-  {
     kind: 'grid',
     label: '面状航线',
     shortLabel: '正射大图',
-    desc: '框选区域生成正射摄影纵横扫掠航线',
-    hint: '点击边界节点，至少三个点；双击完成区域',
+    desc: '绘制区域并自动生成正射摄影航线',
+    hint: '单击连续绘制区域边界，至少三个点；双击完成',
     color: '#369ad9',
     tint: '#eaf7fd',
     icon: '/assets/zhengshe.png',
-  },
-  {
-    kind: 'oblique',
-    label: '倾斜航线',
-    shortLabel: '三维建模',
-    desc: '多方向倾斜拍摄，服务建筑与三维重建',
-    hint: '先绘制区域，系统将自动生成多方向航线',
-    color: '#7165e8',
-    tint: '#f0edff',
-    icon: '/assets/qingxie.png',
-  },
-  {
-    kind: 'orbit',
-    label: '环绕航线',
-    shortLabel: '独栋建模',
-    desc: '围绕目标生成圆形或螺旋环绕航点',
-    hint: '点击目标中心，再调整半径、圈数与拍摄方向',
-    color: '#118c85',
-    tint: '#e7f7f5',
-    icon: '/assets/huanrao.png',
   },
 ]
 
@@ -211,7 +161,7 @@ export const CAMERA_MAP = Object.fromEntries(
 ) as Record<DroneId, CameraProfile>
 
 export const DEFAULT_SETTINGS: PlannerSettings = {
-  name: '妙应寺航测任务',
+  name: '正射大图任务',
   drone: 'air3s',
   cameraDirection: 'nadir',
   altitude: 100,
@@ -263,7 +213,7 @@ export const SAMPLE_POLYGON: LngLat[] = [
 ]
 
 export const DEFAULT_DRAFT: PlannerDraft = {
-  kind: 'points',
+  kind: 'grid',
   input: [],
   settings: { ...DEFAULT_SETTINGS },
   selectedIndex: null,
@@ -717,6 +667,7 @@ function resultBase(
 
 export function calculatePlan(draft: PlannerDraft): PlannerResult {
   const input = draft.input
+  const selectedKind = 'grid' as PlannerKind
   let settings = sanitizeSettings(draft.settings)
   const camera = CAMERA_MAP[settings.drone] ?? CAMERA_MAP.custom
   const footprint = cameraFootprint(camera, settings.altitude)
@@ -736,7 +687,7 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
       legs,
       waypoints: imported,
       source,
-      area: draft.kind === 'grid' || draft.kind === 'oblique' ? polygonArea(source) : 0,
+      area: polygonArea(source),
       pathLength,
       captureLength: pathLength,
       gsd: gsdFor(camera, settings.altitude),
@@ -759,22 +710,22 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
   const warnings: string[] = []
   const source = [...input]
 
-  if (draft.kind === 'points') {
+  if (selectedKind === 'points') {
     legs = buildPoints(input, settings)
     completed = input.length > 0
-  } else if (draft.kind === 'line') {
+  } else if (selectedKind === 'line') {
     legs = [{ id: 'line-0', points: samplePath(input, waypointInterval), kind: 'capture' }]
     completed = input.length >= 2
-  } else if (draft.kind === 'corridor') {
+  } else if (selectedKind === 'corridor') {
     legs = buildOffsetLegs(input, settings.corridorCount, settings.corridorOffset, settings.rotation).map((leg) => ({
       ...leg,
       points: samplePath(leg.points, waypointInterval),
     }))
     completed = input.length >= 2
-  } else if (draft.kind === 'grid' || draft.kind === 'oblique') {
+  } else if (selectedKind === 'grid' || selectedKind === 'oblique') {
     const baseLegs = buildLawnmowerRings(input, lineSpacing, settings.rotation)
     legs = baseLegs.map((leg) => ({ ...leg, points: samplePath(leg.points, waypointInterval) }))
-    if (draft.kind === 'oblique') {
+    if (selectedKind === 'oblique') {
       const directions = settings.obliqueDirections
       const horizontalOffset = Math.min(55, settings.altitude * 0.32)
       const obliqueLegs: FlightLeg[] = []

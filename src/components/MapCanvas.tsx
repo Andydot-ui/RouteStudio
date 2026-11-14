@@ -104,8 +104,7 @@ export function MapCanvas({
     map.on('dblclick', (event: L.LeafletMouseEvent) => {
       L.DomEvent.preventDefault(event.originalEvent)
       if (!drawingRef.current) return
-      const kind = draftRef.current.kind
-      if (kind !== 'points' && draftRef.current.input.length >= 3) callbacksRef.current.onFinishPolygon()
+      if (draftRef.current.input.length >= 3) callbacksRef.current.onFinishPolygon()
     })
 
     // Middle mouse and right mouse drag pan the canvas. The native context menu is
@@ -190,7 +189,7 @@ export function MapCanvas({
     const state = stateRef.current
     if (!state) return
     state.renderLayer.clearLayers()
-    const def = PLANNER_DEFS.find((item) => item.kind === draft.kind) ?? PLANNER_DEFS[0]
+    const def = PLANNER_DEFS[0]
     if (result.source.length > 2) {
       if (draft.kind === 'grid' || draft.kind === 'oblique') {
         L.polygon(result.source.map((point) => [point[1], point[0]] as L.LatLngTuple), {
@@ -261,7 +260,7 @@ export function MapCanvas({
     const state = stateRef.current
     if (!state) return
     state.editLayer.clearLayers()
-    const def = PLANNER_DEFS.find((item) => item.kind === draft.kind) ?? PLANNER_DEFS[0]
+    const def = PLANNER_DEFS[0]
     draft.input.forEach((point, index) => {
       const selected = draft.selectedIndex === index
       const marker = L.marker([point[1], point[0]], {

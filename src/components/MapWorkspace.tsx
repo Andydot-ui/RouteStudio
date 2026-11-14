@@ -28,7 +28,7 @@ export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, 
 }) {
   const [mapMenu, setMapMenu] = useState(false)
   const [layersMenu, setLayersMenu] = useState(false)
-  const def = PLANNER_DEFS.find((item) => item.kind === draft.kind) ?? PLANNER_DEFS[0]
+  const def = PLANNER_DEFS[0]
   const amount = draft.input.length
   return <main className="map-workspace">
     <MapCanvas draft={draft} result={result} baseMap={baseMap} showNumbers={showNumbers} showCamera={showCamera} drawing={drawing} onAddPoint={onAddPoint} onSetInput={onSetInput} onSelectInput={onSelectInput} onLocate={onLocate} onFinishPolygon={onFinishPolygon}/>

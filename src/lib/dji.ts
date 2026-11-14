@@ -40,10 +40,6 @@ function parseCoordinate(text: string): LngLat | null {
   return null
 }
 
-function missionKind(pointCount: number): 'points' | 'grid' {
-  return pointCount >= 10 ? 'grid' : 'points'
-}
-
 export type ImportedMission = {
   draft: PlannerDraft
   warnings: string[]
@@ -125,7 +121,7 @@ export function importMissionBuffer(buffer: ArrayBuffer, filename: string): Impo
   }
   return {
     draft: {
-      kind: missionKind(waypoints.length),
+      kind: 'grid',
       input: points,
       settings,
       selectedIndex: null,
