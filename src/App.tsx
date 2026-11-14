@@ -66,7 +66,7 @@ function App() {
   const setSettings = (patch: Partial<PlannerSettings>) => setDraft((current) => ({ ...current, settings: sanitizeSettings({ ...current.settings, ...patch }) }))
   const onName = (name: string) => setDraft((current) => applyMissionName(current, name))
   const selectPlanner = (_kind: PlannerKind) => { setDraft((current) => ({ ...current, kind: 'grid', input: [], selectedIndex: null, importedWaypoints: undefined })); setDrawing(true); setWorkspaceMode('planner'); setDrawerOpen(false); setMobilePanel(null) }
-  const loadDemo = () => { commit(createDemoDraft('grid')); setDrawing(false); setMobilePanel(null); postToast('已载入当前航线类型的示例任务') }
+  const loadDemo = () => { commit(createDemoDraft('grid')); setDrawing(false); setMobilePanel(null); setDrawerOpen(false); postToast('已载入当前航线类型的示例任务') }
   const saveMission = () => { const mission: SavedMission = { id: savedName || crypto.randomUUID(), name: draft.settings.name || '未命名任务', kind: 'grid', updatedAt: new Date().toISOString(), draft: cloneDraft(draft) }; const next = missions.filter((item) => item.id !== mission.id).concat(mission); setMissions(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSavedName(mission.name); postToast('任务已保存到本地浏览器') }
   const openMission = (mission: SavedMission) => { const restored = cloneDraft(mission.draft); restored.kind = 'grid'; commit(restored); setWorkspaceMode('planner'); setMobilePanel(null); setSavedName(mission.name); postToast('任务已打开') }
   const deleteMission = (id: string) => { const next = missions.filter((item) => item.id !== id); setMissions(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); postToast('已删除保存的任务', 'info') }

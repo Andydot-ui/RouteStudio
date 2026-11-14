@@ -357,8 +357,6 @@ input[type='checkbox'] { accent-color: var(--win-accent); }
 .search-input:focus-within { border-color: var(--win-control-border); box-shadow: inset 0 -2px 0 var(--win-accent); background: var(--win-layer); }
 .waypoint-row { border-bottom-color: var(--win-divider); }
 .waypoint-row:hover { background: var(--win-subtle-hover); }
-.waypoint-row.is-current { background: var(--win-accent-subtle); box-shadow: inset 3px 0 0 var(--win-accent); }
-:root[data-theme=dark] .waypoint-row.is-current { background: var(--win-selection); }
 .waypoint-index { background: var(--win-control); color: var(--win-text-secondary); border-radius: 50%; font-weight: 600; }
 .waypoint-index.capture { background: var(--win-accent); color: #fff; }
 :root[data-theme=dark] .waypoint-index.capture { background: #4cc2ff; color: #003660; }

@@ -68,10 +68,6 @@
 .segmented { display:flex; border:1px solid #dfdfdf; padding:2px; border-radius:6px; background:#f9f9f9; gap:2px; }
 .segmented button { flex:1; border:0; background:transparent; color:#8a8a8a; font-size:10px; padding:5px; border-radius:4px; }
 .segmented button.is-active { color:#145c97; background:#ededed; font-weight:600; }
-.inline-setting { display:flex; justify-content:space-between; align-items:center; color:#8a8a8a; font-size:10px; margin-top:5px; }
-.direction-pills { display:flex; gap:3px; }
-.direction-pills button { border:1px solid #e5e5e5; border-radius:4px; background:#ffffff; color:#9b9b9b; padding:3px 6px; font-size:9px; }
-.direction-pills button.is-active { background:#ededed; color:#145c97; border-color:#a5d6f5; font-weight:700; }
 .camera-select { position:relative; margin-bottom:11px; }
 .camera-select-trigger { border:1px solid #e5e5e5; border-radius:7px; width:100%; height:45px; background:#ffffff; display:flex; align-items:center; padding:0 9px; gap:8px; text-align:left; color:#9b9b9b; }
 .camera-select-trigger > span:nth-child(2) { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
@@ -190,7 +186,7 @@
 .sheet-missions button > div { flex:1; display:flex; flex-direction:column; gap:3px; }
 .sheet-missions strong { color:#4d4d4d; font-size:12px; }
 .sheet-missions small { color:#9b9b9b; font-size:9.5px; }
-@media (max-width:1240px) { :root { --sidebar-width:206px; --panel-width:334px; } .topbar { gap:13px; padding-left:17px; padding-right:16px; } .breadcrumb > span { display:none; } .breadcrumb > svg { display:none; } .mission-title-input input { width:128px; } .drawing-pill-copy { display:none; } .drawing-pill { padding:5px; } .drawing-pill kbd { display:none; } .three-info { gap:16px; } }
+@media (max-width:1240px) { :root { --sidebar-width:206px; --panel-width:334px; } .topbar { gap:13px; padding-left:17px; padding-right:16px; } .breadcrumb > span { display:none; } .breadcrumb > svg { display:none; } .mission-title-input input { width:128px; } .drawing-pill-copy { display:none; } .drawing-pill { padding:5px; } .drawing-pill kbd { display:none; } }
 @media (max-width:920px) {
 :root { --topbar-height:58px; --sidebar-width:0px; --bottom-height:0px; }
 .app-shell { min-height:100dvh; height:100dvh; }
@@ -225,8 +221,6 @@
 }
 @media (max-width:920px) {
 .map-top-left { top:12px; left:12px; gap:6px; }
-.map-mode-switch button { padding:7px 8px; }
-.map-mode-switch button svg { width:13px; height:13px; }
 .map-layer-controls > button { display:none; }
 .map-top-right { top:12px; right:12px; gap:6px; }
 .drawing-pill { height:32px; border-radius:7px; }
@@ -234,11 +228,6 @@
 .map-tool-stack { display:none; }
 .map-bottom-card { left:12px; bottom:78px; }
 .map-help-hint { display:none; }
-.three-toolbar { top:12px; left:12px; right:12px; }
-.three-axis { bottom:103px; right:14px; }
-.three-info { left:14px; bottom:74px; gap:13px; }
-.three-info div:nth-child(3) { display:none; }
-.three-hint { display:none; }
 .mobile-quickbar { display:flex; position:absolute; z-index:700; left:10px; right:10px; bottom:max(10px,env(safe-area-inset-bottom)); height:59px; padding:5px 6px; background:rgba(255, 255, 255, .97); border:1px solid rgba(223, 223, 223, .9); border-radius:12px; box-shadow:0 5px 24px rgba(18, 18, 18, .22); align-items:stretch; }
 .mobile-quickbar button { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; background:transparent; border-radius:8px; color:#8a8a8a; font-size:8.5px; font-weight:600; padding:0 2px; }
 .mobile-quickbar button:hover,.mobile-quickbar button.is-active { background:#ededed; color:#005fb8; }
@@ -262,4 +251,4 @@
 .toast { bottom:82px; width:calc(100% - 28px); min-width:0; font-size:10px; }
 .workspace-grid.is-single .waypoints-panel,.workspace-grid.is-single .files-panel { min-height:calc(100dvh - var(--topbar-height)); }
 }
-@media (max-width:480px) { .topbar { gap:7px; padding:0 9px; } .brand > span { display:none; } .topbar-actions .theme-toggle { display:inline-flex; width:32px; min-width:32px; } .unsaved-label { display:none; } .mission-title-input input { font-size:11px; } .map-mode-switch { gap:1px; } .map-mode-switch button { font-size:9px; padding:6px; } .map-bottom-card { max-width:calc(100% - 24px); } .map-bottom-card strong { font-size:8.5px; } .three-info { display:none; } .three-axis { bottom:83px; } .three-toolbar { align-items:flex-start; } .toolbar-caption { background:rgba(18, 18, 18, .55); padding:5px 7px; border-radius:5px; } .mobile-sheet { max-height:87dvh; } }
+@media (max-width:480px) { .topbar { gap:7px; padding:0 9px; } .brand > span { display:none; } .topbar-actions .theme-toggle { display:inline-flex; width:32px; min-width:32px; } .unsaved-label { display:none; } .mission-title-input input { font-size:11px; } .map-bottom-card { max-width:calc(100% - 24px); } .map-bottom-card strong { font-size:8.5px; } .mobile-sheet { max-height:87dvh; } }

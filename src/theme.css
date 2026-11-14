@@ -57,8 +57,6 @@
 :root[data-theme=dark] .segmented{background:#1b1b1b;border-color:#393939}
 :root[data-theme=dark] .segmented button{color:#9b9b9b}
 :root[data-theme=dark] .segmented button.is-active{color:#a5d6f5;background:#123b5e}
-:root[data-theme=dark] .direction-pills button{color:#aaaaaa;background:#202020;border-color:#393939}
-:root[data-theme=dark] .direction-pills button.is-active{color:#a5d6f5;background:#123b5e;border-color:#0078d4}
 :root[data-theme=dark] .camera-select-trigger{background:#1b1b1b;border-color:#393939}
 :root[data-theme=dark] .camera-select-trigger strong{color:#dfdfdf}
 :root[data-theme=dark] .camera-select-trigger small{color:#9b9b9b}
