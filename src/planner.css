@@ -45,10 +45,16 @@
 .number-input span { padding-right:8px; color:#94a198; font-size:9px; white-space:nowrap; }
 .two-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .altitude-split { margin-top:10px; }
+.preset-row { display:flex; gap:6px; margin:0 0 10px; }
+.preset-row button { flex:1; height:27px; border:1px solid #dfe8e2; background:#fbfdfc; border-radius:5px; color:#789084; font-size:9px; }
+.preset-row button.is-active { color:#346a49; background:#e9f5ec; border-color:#b7d7c1; font-weight:700; }
 .planning-note { min-height:58px; border:1px dashed #dce7df; background:#f8fbf9; border-radius:6px; padding:8px; display:flex; flex-direction:column; justify-content:center; gap:3px; }
 .planning-note span { font-size:9px; color:#72877a; }
 .planning-note strong { font-size:9px; color:#467758; }
-:root[data-theme=dark] .planning-note { border-color:#34483b; background:#17251d; }
+:root[data-theme=dark] .preset-row { display:flex; gap:6px; margin:0 0 10px; }
+.preset-row button { flex:1; height:27px; border:1px solid #dfe8e2; background:#fbfdfc; border-radius:5px; color:#789084; font-size:9px; }
+.preset-row button.is-active { color:#346a49; background:#e9f5ec; border-color:#b7d7c1; font-weight:700; }
+.planning-note { border-color:#34483b; background:#17251d; }
 :root[data-theme=dark] .planning-note span { color:#90a599; }
 :root[data-theme=dark] .planning-note strong { color:#9dd4ad; }
 .info-line { color:#82958a; display:flex; flex-wrap:wrap; gap:7px 12px; margin-top:11px; font-size:9px; line-height:1.45; }

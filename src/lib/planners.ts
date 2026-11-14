@@ -730,6 +730,7 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
     ? Math.max(2, settings.lineSpacing)
     : Math.max(2, footprint.height * (1 - settings.sideOverlap / 100))
   const photoInterval = Math.max(1, footprint.width * (1 - settings.forwardOverlap / 100))
+  const waypointInterval = Math.max(1, Math.min(photoInterval, settings.splitDistance))
   if (draft.importedWaypoints?.length) {
     const imported = draft.importedWaypoints
     const source = imported.map((point) => [point.lon, point.lat] as LngLat)
@@ -768,18 +769,17 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
     legs = buildPoints(input, settings)
     completed = input.length > 0
   } else if (draft.kind === 'line') {
-    legs = [{ id: 'line-0', points: samplePath(input, Math.max(photoInterval, settings.splitDistance)), kind: 'capture' }]
+    legs = [{ id: 'line-0', points: samplePath(input, waypointInterval), kind: 'capture' }]
     completed = input.length >= 2
   } else if (draft.kind === 'corridor') {
     legs = buildOffsetLegs(input, settings.corridorCount, settings.corridorOffset, settings.rotation).map((leg) => ({
       ...leg,
-      points: samplePath(leg.points, Math.max(photoInterval, settings.splitDistance)),
+      points: samplePath(leg.points, waypointInterval),
     }))
     completed = input.length >= 2
   } else if (draft.kind === 'grid' || draft.kind === 'oblique') {
     const baseLegs = buildLawnmowerRings(input, lineSpacing, settings.rotation)
-    const splitDistance = Math.max(10, Math.round(settings.splitDistance / 10) * 10)
-    legs = baseLegs.map((leg) => ({ ...leg, points: samplePath(leg.points, splitDistance) }))
+    legs = baseLegs.map((leg) => ({ ...leg, points: samplePath(leg.points, waypointInterval) }))
     if (draft.kind === 'oblique') {
       const directions = settings.obliqueDirections
       const horizontalOffset = Math.min(55, settings.altitude * 0.32)
