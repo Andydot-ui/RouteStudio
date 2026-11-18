@@ -26,6 +26,7 @@ type MapState = {
   map: L.Map
   baseLayers: L.TileLayer[]
   renderLayer: L.LayerGroup
+  drawLayer: L.LayerGroup
   editLayer: L.LayerGroup
   previewLayer: L.LayerGroup
 }
@@ -116,6 +117,8 @@ export function MapCanvas({
   const mapReadyRef = useRef(false)
   const baseMapRef = useRef(baseMap)
   const appliedBaseMapRef = useRef<BaseMap | null>(null)
+  const cursorRef = useRef<L.LatLng | null>(null)
+  const drawOverlayRef = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     callbacksRef.current = { onAddPoint, onSetInput, onSelectInput, onLocate, onFinishPolygon, onMapReady }
@@ -141,9 +144,69 @@ export function MapCanvas({
     const baseLayers = addBaseLayers(map, baseMapRef.current)
     appliedBaseMapRef.current = baseMapRef.current
     const renderLayer = L.layerGroup().addTo(map)
+    const drawLayer = L.layerGroup().addTo(map)
     const editLayer = L.layerGroup().addTo(map)
     const previewLayer = L.layerGroup().addTo(map)
-    stateRef.current = { map, baseLayers, renderLayer, editLayer, previewLayer }
+    stateRef.current = { map, baseLayers, renderLayer, drawLayer, editLayer, previewLayer }
+
+    // While the user is drawing, the boundary follows the placed control points and a
+    // dashed edge follows the cursor. The preview polygon is filled so the area that
+    // will actually be covered is visible before the click is committed. Tiles use
+    // GCJ-02 display coordinates; these overlays never leave the map, so they use the
+    // Leaflet latlng directly and do not need a datum round trip.
+    drawOverlayRef.current = () => {
+      const state = stateRef.current
+      if (!state) return
+      state.drawLayer.clearLayers()
+      if (!drawingRef.current) return
+      const def = PLANNER_DEFS[0]
+      const placed = draftRef.current.input.map(displayPoint)
+      const cursor = cursorRef.current
+      const cursorPoint: L.LatLngTuple | null = cursor ? [cursor.lat, cursor.lng] : null
+      const ring = cursorPoint && placed.length >= 2 ? [...placed, cursorPoint] : placed
+      if (ring.length >= 3) {
+        L.polygon(ring, {
+          stroke: false,
+          fillColor: def.color,
+          fillOpacity: 0.2,
+          interactive: false,
+        }).addTo(state.drawLayer)
+      }
+      if (placed.length >= 2) {
+        const lines: L.PolylineOptions = { interactive: false, lineCap: 'round', lineJoin: 'round' }
+        L.polyline(placed, { ...lines, color: '#ffffff', weight: 6, opacity: 0.55 }).addTo(state.drawLayer)
+        L.polyline(placed, { ...lines, color: def.color, weight: 3, opacity: 0.98 }).addTo(state.drawLayer)
+      }
+      if (cursorPoint && placed.length) {
+        const rubber = [placed[placed.length - 1], cursorPoint]
+        const dashed: L.PolylineOptions = { interactive: false, dashArray: '9 7', lineCap: 'round' }
+        L.polyline(rubber, { ...dashed, color: '#ffffff', weight: 5, opacity: 0.45 }).addTo(state.drawLayer)
+        L.polyline(rubber, { ...dashed, color: def.color, weight: 2.5, opacity: 0.98 }).addTo(state.drawLayer)
+        if (placed.length >= 2) {
+          const closing: L.PolylineOptions = { interactive: false, dashArray: '4 9', lineCap: 'round' }
+          L.polyline([cursorPoint, placed[0]], { ...closing, color: '#ffffff', weight: 4, opacity: 0.35 }).addTo(state.drawLayer)
+          L.polyline([cursorPoint, placed[0]], { ...closing, color: def.color, weight: 1.8, opacity: 0.8 }).addTo(state.drawLayer)
+        }
+        L.circleMarker(cursorPoint, {
+          radius: 5,
+          color: '#ffffff',
+          weight: 2.5,
+          fillColor: def.color,
+          fillOpacity: 1,
+          interactive: false,
+        }).addTo(state.drawLayer)
+      }
+      if (placed.length >= 2) {
+        L.circleMarker(placed[0], {
+          radius: 6,
+          color: def.color,
+          weight: 2,
+          fillColor: '#ffffff',
+          fillOpacity: 0.92,
+          interactive: false,
+        }).addTo(state.drawLayer)
+      }
+    }
 
     map.on('click', (event: L.LeafletMouseEvent) => {
       if (!drawingRef.current) return
@@ -153,6 +216,20 @@ export function MapCanvas({
       L.DomEvent.preventDefault(event.originalEvent)
       if (!drawingRef.current) return
       if (draftRef.current.input.length >= 3) callbacksRef.current.onFinishPolygon()
+    })
+    map.on('mousemove', (event: L.LeafletMouseEvent) => {
+      if (!drawingRef.current) return
+      cursorRef.current = event.latlng
+      drawOverlayRef.current()
+    })
+    map.on('mouseout', () => {
+      if (!drawingRef.current) return
+      cursorRef.current = null
+      drawOverlayRef.current()
+    })
+    map.on('movestart zoomstart', () => {
+      cursorRef.current = null
+      drawOverlayRef.current()
     })
 
     // Middle mouse and right mouse drag pan the canvas. The native context menu is
@@ -228,6 +305,7 @@ export function MapCanvas({
     if (!state) return
     state.renderLayer.clearLayers()
     const def = PLANNER_DEFS[0]
+    if (drawing) return
     if (result.source.length > 2) {
       if (draft.kind === 'grid' || draft.kind === 'oblique') {
         L.polygon(result.source.map(displayPoint), {
@@ -292,7 +370,12 @@ export function MapCanvas({
         }),
       }).addTo(state.renderLayer)
     })
-  }, [draft.kind, draft.input, draft.settings.orbitRadius, result, showNumbers, showCamera])
+  }, [draft.kind, draft.input, draft.settings.orbitRadius, result, showNumbers, showCamera, drawing])
+
+  useEffect(() => {
+    if (!drawing) cursorRef.current = null
+    drawOverlayRef.current()
+  }, [draft.input, draft.kind, drawing])
 
   useEffect(() => {
     const state = stateRef.current
