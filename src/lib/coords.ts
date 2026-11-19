@@ -3,23 +3,23 @@
 // Vectors are converted to GCJ-02 only for display, and map clicks are converted back.
 const PI = Math.PI
 const SEMI_MAJOR_AXIS = 6378245.0
-const ECCENTRICITY_SQUARED = 0.008268171458093455
+const ECCENTRICITY_SQUARED = 0.006693421622965943
 
 const outOfChina = (lon: number, lat: number) => lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271
 
 const transformLat = (x: number, y: number) => {
-  let ret = -100 + 2 * x + 3 * y + 0.2 * y * y + 0.4 * x * x + 0.2 * x * y
-  ret += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) / 3
-  ret += (20 * Math.sin(y * PI) + 40 * Math.sin((y / 3) * PI)) / 3
-  ret += (160 * Math.sin((y / 12) * PI) + 320 * Math.sin((y * PI) / 30)) / 3
+  let ret = -100 + 2 * x + 3 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x))
+  ret += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) * 2 / 3
+  ret += (20 * Math.sin(y * PI) + 40 * Math.sin((y / 3) * PI)) * 2 / 3
+  ret += (160 * Math.sin((y / 12) * PI) + 320 * Math.sin((y * PI) / 30)) * 2 / 3
   return ret
 }
 
 const transformLon = (x: number, y: number) => {
   let ret = 300 + x + 2 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x))
-  ret += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) / 3
-  ret += (20 * Math.sin(x * PI) + 40 * Math.sin((x / 3) * PI)) / 3
-  ret += (150 * Math.sin((x / 12) * PI) + 300 * Math.sin((x / 30) * PI)) / 3
+  ret += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) * 2 / 3
+  ret += (20 * Math.sin(x * PI) + 40 * Math.sin((x / 3) * PI)) * 2 / 3
+  ret += (150 * Math.sin((x / 12) * PI) + 300 * Math.sin((x / 30) * PI)) * 2 / 3
   return ret
 }
 
@@ -31,7 +31,7 @@ export function wgs84ToGcj02(lon: number, lat: number): [number, number] {
   let magic = Math.sin(radLat)
   magic = 1 - ECCENTRICITY_SQUARED * magic * magic
   const sqrtMagic = Math.sqrt(magic)
-  dLat = (dLat * 180) / (((SEMI_MAJOR_AXIS * (1 - ECCENTRICITY_SQUARED)) / sqrtMagic) * Math.cos(radLat) * PI)
+  dLat = (dLat * 180) / (((SEMI_MAJOR_AXIS * (1 - ECCENTRICITY_SQUARED)) / (magic * sqrtMagic)) * PI)
   dLon = (dLon * 180) / ((SEMI_MAJOR_AXIS / sqrtMagic) * Math.cos(radLat) * PI)
   return [lon + dLon, lat + dLat]
 }
