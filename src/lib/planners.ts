@@ -520,6 +520,11 @@ export function buildOffsetLegs(
   return result
 }
 
+// `width` is the ground coverage along the sensor's long edge and `height` along its short
+// edge. DJI airframes mount the camera with the long edge across the flight direction, so
+// `width` is the cross-track span that sets the line spacing and `height` is the along-track
+// span that sets the photo interval. Swapping them inflates the number of scan lines by the
+// sensor aspect ratio (17.3/13 = 33% more lines on a Mavic 3) for the same overlap settings.
 export function cameraFootprint(camera: CameraProfile, altitude: number) {
   const actualFocalLength = camera.activeFocalLength ?? camera.focalLength
   const width = (camera.sensorWidth / actualFocalLength) * altitude
@@ -638,8 +643,8 @@ function resultBase(
   const gsd = gsdFor(camera, settings.altitude)
   const lineSpacing = settings.customLineSpacing
     ? Math.max(2, settings.lineSpacing)
-    : Math.max(2, footprint.height * (1 - settings.sideOverlap / 100))
-  const photoInterval = Math.max(1, footprint.width * (1 - settings.forwardOverlap / 100))
+    : Math.max(2, footprint.width * (1 - settings.sideOverlap / 100))
+  const photoInterval = Math.max(1, footprint.height * (1 - settings.forwardOverlap / 100))
   const pathLength = combined.reduce((total, leg) => total + polylineLength(leg.points), 0)
   const captureCount = waypoints.filter((waypoint) => waypoint.takePhoto).length
   const captureMeters = combined.filter((leg) => leg.kind === 'capture').reduce((total, leg) => total + polylineLength(leg.points), 0)
@@ -676,8 +681,8 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
   const footprint = cameraFootprint(camera, settings.altitude)
   const lineSpacing = settings.customLineSpacing
     ? Math.max(2, settings.lineSpacing)
-    : Math.max(2, footprint.height * (1 - settings.sideOverlap / 100))
-  const photoInterval = Math.max(1, footprint.width * (1 - settings.forwardOverlap / 100))
+    : Math.max(2, footprint.width * (1 - settings.sideOverlap / 100))
+  const photoInterval = Math.max(1, footprint.height * (1 - settings.forwardOverlap / 100))
   const waypointInterval = Math.max(1, Math.min(photoInterval, settings.splitDistance))
   if (draft.importedWaypoints?.length) {
     const imported = draft.importedWaypoints
@@ -695,10 +700,10 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
       captureLength: pathLength,
       gsd: gsdFor(camera, settings.altitude),
       footprint,
-      lineSpacing: footprint.height * (1 - settings.sideOverlap / 100),
-      photoInterval: footprint.width * (1 - settings.forwardOverlap / 100),
-      recommendedLineSpacing: footprint.height * (1 - settings.sideOverlap / 100),
-      captureLineSpacing: footprint.height * (1 - settings.sideOverlap / 100),
+      lineSpacing: footprint.width * (1 - settings.sideOverlap / 100),
+      photoInterval: footprint.height * (1 - settings.forwardOverlap / 100),
+      recommendedLineSpacing: footprint.width * (1 - settings.sideOverlap / 100),
+      captureLineSpacing: footprint.width * (1 - settings.sideOverlap / 100),
       estimatedBattery: Math.max(1, Math.ceil(pathLength / Math.max(5, settings.speed) / 60)),
       captureCount,
       mainLineCount: 1,
