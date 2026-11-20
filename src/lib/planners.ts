@@ -174,6 +174,8 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
   forwardOverlap: 80,
   sideOverlap: 70,
   rotation: 0,
+  autoDirection: true,
+  turnMode: 'pass',
   obliqueDirections: 3,
   corridorOffset: 35,
   corridorCount: 5,
@@ -384,7 +386,11 @@ export function samplePath(
     const b = points[segment + 1]
     const segmentLength = distance(a, b)
     if (segmentLength < 0.01) continue
-    const count = Math.max(1, Math.ceil(segmentLength / spacing))
+    // Round rather than ceil: a 383 m lane with a 33.9 m nominal interval divides into
+    // 11.3 steps, and rounding to 11 spreads them at 34.8 m instead of forcing a 12th
+    // step at 31.9 m. Ceiling always over-samples overlapping coverage the camera already
+    // covers, which is what pushed every lane to 13 points instead of 12.
+    const count = Math.max(1, Math.round(segmentLength / spacing))
     const start = segment === 0 && includeStart ? 0 : 1
     const end = count
     for (let i = start; i <= end; i += 1) result.push(pointAlong(a, b, i / count))
@@ -450,6 +456,60 @@ function lineIntersections(
 
 export function polygonsToRings(points: LngLat[]) {
   return closeRing(points).slice(0, -1)
+}
+
+// Scan direction that yields the shortest mission, the rule DJI Terra and XiaoQu both apply.
+// For each edge direction of the drawn area we compute the path an actual lawnmower would
+// fly - lane count comes from the perpendicular span, lanes are then spread evenly so the
+// requested overlap is never violated - and keep the cheapest. Minimising the lane count
+// alone is not enough: on a near-square block two orientations tie on count while differing
+// by a full lane of travel, and the tie-break decides whether the mission is 90 waypoints or
+// 78. Returns a rotation in the planner's [0,180) axis convention, where 0 means the lanes
+// run east-west.
+export function autoScanRotation(points: LngLat[], spacing: number): number {
+  const polygon = polygonsToRings(points)
+  if (polygon.length < 3) return 0
+  const origin = polygon[0]
+  const local = polygon.map((point) => projectToLocal(point, origin))
+  const laneSpacing = Math.max(2, spacing)
+  let bestRotation = 0
+  let bestPath = Number.POSITIVE_INFINITY
+  for (let i = 0; i < local.length; i += 1) {
+    const a = local[i]
+    const b = local[(i + 1) % local.length]
+    const dx = b.lon - a.lon
+    const dy = b.lat - a.lat
+    const length = Math.hypot(dx, dy)
+    if (length < 1) continue
+    const ux = dx / length
+    const uy = dy / length
+    let minAcross = Number.POSITIVE_INFINITY
+    let maxAcross = Number.NEGATIVE_INFINITY
+    let minAlong = Number.POSITIVE_INFINITY
+    let maxAlong = Number.NEGATIVE_INFINITY
+    for (const p of local) {
+      const across = -(p.lon - a.lon) * uy + (p.lat - a.lat) * ux
+      const along = (p.lon - a.lon) * ux + (p.lat - a.lat) * uy
+      if (across < minAcross) minAcross = across
+      if (across > maxAcross) maxAcross = across
+      if (along < minAlong) minAlong = along
+      if (along > maxAlong) maxAlong = along
+    }
+    const spanAcross = maxAcross - minAcross
+    const laneLength = maxAlong - minAlong
+    if (spanAcross < laneSpacing || laneLength < 1) continue
+    // Same rounding the lawnmower builder applies: whole intervals, lanes spread evenly.
+    const intervals = Math.max(1, Math.ceil(spanAcross / laneSpacing))
+    const lanes = intervals + 1
+    const actualSpacing = spanAcross / intervals
+    const path = lanes * laneLength + intervals * actualSpacing
+    if (path < bestPath - 1e-6) {
+      bestPath = path
+      const degrees = (deg(Math.atan2(uy, ux)) % 180 + 180) % 180
+      bestRotation = degrees
+    }
+  }
+  return bestRotation
 }
 
 export function buildLawnmowerRings(
@@ -649,7 +709,14 @@ function resultBase(
   const captureCount = waypoints.filter((waypoint) => waypoint.takePhoto).length
   const captureMeters = combined.filter((leg) => leg.kind === 'capture').reduce((total, leg) => total + polylineLength(leg.points), 0)
   const photoCount = Math.max(1, Math.ceil(captureMeters / Math.max(1, photoInterval)))
-  const estimatedBattery = Math.max(1, Math.ceil((pathLength + waypoints.length * 2) / Math.max(5, settings.speed) / 60))
+  // Mission time follows the model DJI Terra and XiaoQu use rather than pure distance:
+  // cruise time plus a shutter settle per photo plus a turn penalty per waypoint, with
+  // stopping turns costing roughly twice as much as flying through.
+  const turnPenalty = settings.turnMode === 'stop' ? 1.1 : 0.45
+  const estimatedSeconds = pathLength / Math.max(1, settings.speed)
+    + captureCount * 0.8
+    + waypoints.length * turnPenalty
+  const estimatedBattery = Math.max(1, Math.ceil(estimatedSeconds / 60))
   return {
     legs: combined,
     waypoints,
@@ -664,6 +731,7 @@ function resultBase(
     recommendedLineSpacing: lineSpacing,
     captureLineSpacing: lineSpacing,
     estimatedBattery,
+    estimatedSeconds,
     captureCount,
     mainLineCount: combined.filter((leg) => leg.kind === 'capture').length,
     photoCount,
@@ -731,7 +799,13 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
     }))
     completed = input.length >= 2
   } else if (selectedKind === 'grid' || selectedKind === 'oblique') {
-    const baseLegs = buildLawnmowerRings(input, lineSpacing, settings.rotation)
+    // With automatic direction the lanes follow the longest edge of the area, which is the
+    // fewest-lanes axis; the manual dial then only overrides when the switch is off.
+    const rotation = settings.autoDirection && input.length >= 3
+      ? autoScanRotation(input, lineSpacing)
+      : settings.rotation
+    settings = { ...settings, rotation }
+    const baseLegs = buildLawnmowerRings(input, lineSpacing, rotation)
     legs = baseLegs.map((leg) => ({ ...leg, points: samplePath(leg.points, waypointInterval) }))
     if (selectedKind === 'oblique') {
       const directions = settings.obliqueDirections
@@ -805,6 +879,7 @@ export function calculatePlan(draft: PlannerDraft): PlannerResult {
     photoInterval,
     recommendedLineSpacing: lineSpacing,
     captureLineSpacing: lineSpacing,
+    usedRotation: settings.rotation,
   }
 }
 
@@ -831,6 +906,8 @@ export function sanitizeSettings(settings: PlannerSettings): PlannerSettings {
     sampleInterval: clamp(Number(settings.sampleInterval) || 20, 2, 300),
     lineSpacing: clamp(Number(settings.lineSpacing) || 30, 2, 500),
     takeoffSecurityHeight: clamp(Number(settings.takeoffSecurityHeight) || 30, 2, 500),
+    autoDirection: settings.autoDirection !== false,
+    turnMode: settings.turnMode === 'stop' ? 'stop' : 'pass',
     // 0 is a valid gimbal pitch, so this cannot use the `|| default` shortcut above.
     gimbalPitch: Number.isFinite(Number(settings.gimbalPitch))
       ? clamp(Number(settings.gimbalPitch), -90, 0)

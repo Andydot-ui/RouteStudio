@@ -62,6 +62,12 @@ export type PlannerSettings = {
   forwardOverlap: number
   sideOverlap: number
   rotation: number
+  // When true the scan direction follows the long edge of the drawn area, which is the
+  // fewest-lanes orientation every serious planner (DJI Terra, XiaoQu) picks automatically.
+  autoDirection: boolean
+  // 'pass' flies through the point while shooting (curvature-continuous, faster and what
+  // XiaoQu exports by default); 'stop' halts, shoots, then turns.
+  turnMode: 'pass' | 'stop'
   obliqueDirections: 2 | 3 | 5
   corridorOffset: number
   corridorCount: number
@@ -110,6 +116,9 @@ export type PlannerResult = {
   photoCount: number
   completed: boolean
   warnings: string[]
+  // Scan axis actually used: the auto-derived edge direction, or the manual dial value.
+  usedRotation?: number
+  estimatedSeconds?: number
 }
 
 export type PlannerDefinition = {

@@ -9,8 +9,9 @@ import type {
 } from './types'
 
 const KML_NS = 'http://www.opengis.net/kml/2.2'
-// The supplied executable reference KMZ uses this namespace verbatim.
-const WPML_NS = 'http://www.uav.com/wpmz/1.0.2'
+// DJI WPML 1.0.2 namespace. Sample files from DJI Mavic 3 missions and from XiaoQu Route
+// Planner both declare http://www.dji.com/wpmz/1.0.2; DJI Fly keys off this URI.
+const WPML_NS = 'http://www.dji.com/wpmz/1.0.2'
 
 function parseXml(text: string): XMLDocument {
   const document = new DOMParser().parseFromString(text, 'application/xml')
@@ -58,6 +59,7 @@ export type ImportedMission = {
 export function importMissionBuffer(buffer: ArrayBuffer, filename: string): ImportedMission {
   const bytes = new Uint8Array(buffer)
   let text = ''
+  let templateXml = ''
   const warnings: string[] = []
   try {
     const entries = unzipSync(bytes)
@@ -66,7 +68,7 @@ export function importMissionBuffer(buffer: ArrayBuffer, filename: string): Impo
     if (!waylines) throw new Error('KMZ 中未找到 wpmz/waylines.wpml')
     text = strFromU8(waylines[1])
     if (template) {
-      const templateXml = strFromU8(template[1])
+      templateXml = strFromU8(template[1])
       if (/wpmz\/1\.0\.\d/i.test(templateXml)) warnings.push('已读取任务模板并保留 WPML 兼容信息')
     }
   } catch (error) {
@@ -102,8 +104,27 @@ export function importMissionBuffer(buffer: ArrayBuffer, filename: string): Impo
   const first = waypoints[0]
   const importedMode = textByLocalName(placemarks[0], 'waypointHeadingMode').trim()
   const headingMode = HEADING_MODE_IMPORTS[importedMode] ?? 'followWayline'
-  if (importedMode && headingMode === 'followWayline' && importedMode !== 'followWayline') {
+  if (importedMode === 'smoothTransition') {
+    warnings.push('机头朝向 smoothTransition 已按跟随航线导入')
+  } else if (importedMode && headingMode === 'followWayline' && importedMode !== 'followWayline') {
     warnings.push(`暂不支持 ${importedMode} 机头朝向，已按跟随航线导入`)
+  }
+  // Turn mode and the take-off security height round-trip from the file so a re-export
+  // keeps the behaviour of the mission as flown rather than silently resetting it.
+  const importedTurn = textByLocalName(placemarks[0], 'waypointTurnMode').trim()
+  const turnMode = TURN_MODE_IMPORTS[importedTurn] ?? 'pass'
+  let takeoffSecurityHeight = 30
+  let importedFinishAction: PlannerSettings['finishAction'] = 'goHome'
+  if (templateXml) {
+    try {
+      const templateDocument = parseXml(templateXml)
+      const security = firstNumber(textByLocalName(templateDocument, 'takeOffSecurityHeight'))
+      if (security !== null) takeoffSecurityHeight = security
+      const action = textByLocalName(templateDocument, 'finishAction').trim()
+      if (action === 'autoLand' || action === 'noAction' || action === 'goHome') importedFinishAction = action
+    } catch {
+      // A malformed template must not block importing the waypoints themselves.
+    }
   }
   const settings: PlannerSettings = {
     name: filename.replace(/\.(kmz|kml)$/i, ''),
@@ -111,14 +132,16 @@ export function importMissionBuffer(buffer: ArrayBuffer, filename: string): Impo
     cameraDirection: first.pitch <= -80 ? 'nadir' : 'custom',
     altitude: Math.round(first.height),
     speed: Math.min(15, Math.max(0.1, first.speed)),
-    takeoffSecurityHeight: 30,
-    finishAction: 'goHome',
+    takeoffSecurityHeight,
+    finishAction: importedFinishAction,
     gimbalPitch: first.pitch,
     headingMode,
     headingAngle: first.yaw,
     forwardOverlap: 80,
     sideOverlap: 70,
     rotation: 0,
+    autoDirection: false,
+    turnMode,
     obliqueDirections: 3,
     corridorOffset: 35,
     corridorCount: 5,
@@ -192,17 +215,36 @@ function distanceForValidation(a: Waypoint, b: Waypoint) {
 }
 
 // The planner already resolves the aircraft yaw per heading mode, but WPML needs the
-// matching mode name too. `manual` maps to DJI's `manually`, not a literal mode string.
+// matching mode name too. Field-verified exports (DJI Fly, XiaoQu Route Planner v1.7) use
+// `smoothTransition` for the follow-the-flight-direction case and `fixed` when the craft
+// holds one compass heading; `manually` lets DJI Fly reuse whatever the operator last set.
 const HEADING_MODE_MAP: Record<PlannerSettings['headingMode'], string> = {
-  followWayline: 'followWayline',
+  followWayline: 'smoothTransition',
   fixed: 'fixed',
   manual: 'manually',
 }
 
 const HEADING_MODE_IMPORTS: Record<string, PlannerSettings['headingMode']> = {
   followWayline: 'followWayline',
+  smoothTransition: 'followWayline',
   fixed: 'fixed',
   manually: 'manual',
+}
+
+// WPML turn modes. `pass` keeps the aircraft moving through the point with a curvature
+// blend (the fast fly-over/shoot mode XiaoQu exports by default); `stop` halts at the
+// point so the shutter fires from a standstill, which is what DJI recommends when the
+// forward overlap is high or the scene has moving subjects.
+const TURN_MODE_MAP: Record<PlannerSettings['turnMode'], string> = {
+  pass: 'toPointAndPassWithContinuityCurvature',
+  stop: 'toPointAndStopWithDiscontinuityCurvature',
+}
+
+const TURN_MODE_IMPORTS: Record<string, PlannerSettings['turnMode']> = {
+  toPointAndPassWithContinuityCurvature: 'pass',
+  toPointAndStopWithContinuityCurvature: 'stop',
+  toPointAndStopWithDiscontinuityCurvature: 'stop',
+  toPointAndFlyOverWithoutStopping: 'pass',
 }
 
 function finishAction(settings: PlannerSettings) {
@@ -237,6 +279,7 @@ function takePhotoAction(actionId: number, suffix: string) {
             <wpml:actionActuatorFunc>takePhoto</wpml:actionActuatorFunc>
             <wpml:actionActuatorFuncParam>
               <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
+              <wpml:useGlobalPayloadLensIndex>0</wpml:useGlobalPayloadLensIndex>
               <wpml:fileSuffix>${xmlEscape(suffix)}</wpml:fileSuffix>
             </wpml:actionActuatorFuncParam>
           </wpml:action>`
@@ -250,6 +293,7 @@ export function buildWaylinesXml(
   const waypoints = result.waypoints
   const speed = normalizeSpeed(settings.speed)
   const suffix = 'route'
+  const turnMode = TURN_MODE_MAP[settings.turnMode] ?? TURN_MODE_MAP.pass
   let nextActionId = 0
   const placemarks = waypoints.map((waypoint, index) => {
     const next = waypoints[index + 1]
@@ -301,7 +345,7 @@ export function buildWaylinesXml(
           <wpml:waypointHeadingPoiIndex>0</wpml:waypointHeadingPoiIndex>
         </wpml:waypointHeadingParam>
         <wpml:waypointTurnParam>
-          <wpml:waypointTurnMode>toPointAndStopWithContinuityCurvature</wpml:waypointTurnMode>
+          <wpml:waypointTurnMode>${turnMode}</wpml:waypointTurnMode>
           <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
         </wpml:waypointTurnParam>
         <wpml:useStraightLine>0</wpml:useStraightLine>
@@ -314,6 +358,11 @@ export function buildWaylinesXml(
       </Placemark>`
   }).join('\n')
 
+  // waylines.wpml carries the real mission distance and duration so DJI Fly's mission
+  // list shows honest numbers instead of zeros.
+  const distance = Math.round(result.pathLength)
+  const duration = Math.round(result.estimatedSeconds ?? result.pathLength / Math.max(1, speed))
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="${KML_NS}" xmlns:wpml="${WPML_NS}">
   <Document>
@@ -322,6 +371,7 @@ export function buildWaylinesXml(
       <wpml:finishAction>${finishAction(settings)}</wpml:finishAction>
       <wpml:exitOnRCLost>executeLostAction</wpml:exitOnRCLost>
       <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
+      <wpml:takeOffSecurityHeight>${normalizeHeight(settings.takeoffSecurityHeight)}</wpml:takeOffSecurityHeight>
       <wpml:globalTransitionalSpeed>${speed.toFixed(1)}</wpml:globalTransitionalSpeed>
       <wpml:droneInfo>
         <wpml:droneEnumValue>68</wpml:droneEnumValue>
@@ -332,8 +382,8 @@ export function buildWaylinesXml(
       <wpml:templateId>0</wpml:templateId>
       <wpml:executeHeightMode>relativeToStartPoint</wpml:executeHeightMode>
       <wpml:waylineId>0</wpml:waylineId>
-      <wpml:distance>0</wpml:distance>
-      <wpml:duration>0</wpml:duration>
+      <wpml:distance>${distance}</wpml:distance>
+      <wpml:duration>${duration}</wpml:duration>
       <wpml:autoFlightSpeed>${speed.toFixed(1)}</wpml:autoFlightSpeed>${placemarks}
     </Folder>
   </Document>
@@ -341,8 +391,71 @@ export function buildWaylinesXml(
 `
 }
 
-export function buildTemplateXml(settings: PlannerSettings) {
+// The template mirrors the structure of a DJI Fly field-verified export (XiaoQu Route
+// Planner v1.7): missionConfig with a take-off security height, then one Folder holding
+// the coordinate system, payload, and global heading parameters followed by a full copy of
+// every waypoint. DJI Fly executes from waylines.wpml and reads template.kml for the
+// mission profile, so both files must agree.
+export function buildTemplateXml(result: PlannerResult, settings: PlannerSettings) {
   const timestamp = Date.now()
+  const speed = normalizeSpeed(settings.speed)
+  const height = normalizeHeight(settings.altitude)
+  // DJI writes mission heights with two decimals in template.kml; match it exactly.
+  const heightStr = height.toFixed(2)
+  const headingMode = HEADING_MODE_MAP[settings.headingMode] ?? 'followWayline'
+  const turnMode = TURN_MODE_MAP[settings.turnMode] ?? TURN_MODE_MAP.pass
+  const waypoints = result.waypoints
+  let nextActionId = 0
+  const placemarks = waypoints.map((waypoint, index) => {
+    const pitch = Math.max(-90, Math.min(0, Number.isFinite(waypoint.pitch) ? waypoint.pitch : -90))
+    const yaw = normalizeYaw(waypoint.yaw)
+    const groupId = index * 2 + 1
+    const photoActionId = waypoint.takePhoto ? nextActionId++ : -1
+    const gimbalActionId = nextActionId++
+    return `
+      <Placemark>
+        <Point><coordinates>${waypoint.lon.toFixed(12)},${waypoint.lat.toFixed(12)}</coordinates></Point>
+        <wpml:index>${index}</wpml:index>
+        <wpml:useGlobalHeight>0</wpml:useGlobalHeight>
+        <wpml:height>${heightStr}</wpml:height>
+        <wpml:useGlobalSpeed>1</wpml:useGlobalSpeed>
+        <wpml:useGlobalTurnParam>0</wpml:useGlobalTurnParam>
+        <wpml:waypointTurnParam>
+          <wpml:waypointTurnMode>${turnMode}</wpml:waypointTurnMode>
+          <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
+        </wpml:waypointTurnParam>
+        <wpml:useStraightLine>0</wpml:useStraightLine>
+        <wpml:useGlobalHeadingParam>0</wpml:useGlobalHeadingParam>
+        <wpml:waypointHeadingParam>
+          <wpml:waypointHeadingMode>${headingMode}</wpml:waypointHeadingMode>
+          <wpml:waypointHeadingAngle>${yaw.toFixed(6)}</wpml:waypointHeadingAngle>
+          <wpml:waypointHeadingAngleEnable>1</wpml:waypointHeadingAngleEnable>
+          <wpml:waypointHeadingPathMode>followBadArc</wpml:waypointHeadingPathMode>
+        </wpml:waypointHeadingParam>
+        <wpml:gimbalPitchAngle>${pitch.toFixed(1)}</wpml:gimbalPitchAngle>
+        <wpml:actionGroup>
+          <wpml:actionGroupId>${groupId}</wpml:actionGroupId>
+          <wpml:actionGroupStartIndex>${index}</wpml:actionGroupStartIndex>
+          <wpml:actionGroupEndIndex>${index}</wpml:actionGroupEndIndex>
+          <wpml:actionGroupMode>parallel</wpml:actionGroupMode>
+          <wpml:actionTrigger><wpml:actionTriggerType>reachPoint</wpml:actionTriggerType></wpml:actionTrigger>
+          ${waypoint.takePhoto ? `<wpml:action>
+            <wpml:actionId>${photoActionId}</wpml:actionId>
+            <wpml:actionActuatorFunc>takePhoto</wpml:actionActuatorFunc>
+            <wpml:actionActuatorFuncParam><wpml:payloadPositionIndex>0</wpml:payloadPositionIndex></wpml:actionActuatorFuncParam>
+          </wpml:action>` : ''}
+          <wpml:action>
+            <wpml:actionId>${gimbalActionId}</wpml:actionId>
+            <wpml:actionActuatorFunc>gimbalEvenlyRotate</wpml:actionActuatorFunc>
+            <wpml:actionActuatorFuncParam>
+              <wpml:gimbalPitchRotateAngle>${pitch.toFixed(1)}</wpml:gimbalPitchRotateAngle>
+              <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
+            </wpml:actionActuatorFuncParam>
+          </wpml:action>
+        </wpml:actionGroup>
+      </Placemark>`
+  }).join('\n')
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="${KML_NS}" xmlns:wpml="${WPML_NS}">
   <Document>
@@ -354,12 +467,33 @@ export function buildTemplateXml(settings: PlannerSettings) {
       <wpml:finishAction>${finishAction(settings)}</wpml:finishAction>
       <wpml:exitOnRCLost>executeLostAction</wpml:exitOnRCLost>
       <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
-      <wpml:globalTransitionalSpeed>${normalizeSpeed(settings.speed).toFixed(1)}</wpml:globalTransitionalSpeed>
+      <wpml:takeOffSecurityHeight>${normalizeHeight(settings.takeoffSecurityHeight)}</wpml:takeOffSecurityHeight>
+      <wpml:globalTransitionalSpeed>${speed.toFixed(1)}</wpml:globalTransitionalSpeed>
       <wpml:droneInfo>
         <wpml:droneEnumValue>68</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>0</wpml:droneSubEnumValue>
       </wpml:droneInfo>
     </wpml:missionConfig>
+    <Folder>
+      <wpml:templateId>0</wpml:templateId>
+      <wpml:waylineCoordinateSysParam>
+        <wpml:coordinateMode>WGS84</wpml:coordinateMode>
+        <wpml:heightMode>relativeToStartPoint</wpml:heightMode>
+      </wpml:waylineCoordinateSysParam>
+      <wpml:payloadParam>
+        <wpml:autoFlightSpeed>${speed.toFixed(1)}</wpml:autoFlightSpeed>
+        <wpml:globalWaypointTurnMode>${turnMode}</wpml:globalWaypointTurnMode>
+        <wpml:globalUseStraightLine>0</wpml:globalUseStraightLine>
+        <wpml:gimbalPitchMode>usePointSetting</wpml:gimbalPitchMode>
+        <wpml:height>${heightStr}</wpml:height>
+      </wpml:payloadParam>
+      <wpml:globalWaypointHeadingParam>
+        <wpml:waypointHeadingMode>${headingMode}</wpml:waypointHeadingMode>
+        <wpml:waypointHeadingAngle>${normalizeYaw(settings.headingAngle).toFixed(6)}</wpml:waypointHeadingAngle>
+        <wpml:waypointHeadingAngleEnable>1</wpml:waypointHeadingAngleEnable>
+        <wpml:waypointHeadingPathMode>followBadArc</wpml:waypointHeadingPathMode>
+      </wpml:globalWaypointHeadingParam>${placemarks}
+    </Folder>
   </Document>
 </kml>
 `
@@ -368,7 +502,7 @@ export function buildTemplateXml(settings: PlannerSettings) {
 export function buildKmz(result: PlannerResult, settings: PlannerSettings, name: string) {
   return zipSync(
     {
-      'wpmz/template.kml': strToU8(buildTemplateXml(settings)),
+      'wpmz/template.kml': strToU8(buildTemplateXml(result, settings)),
       'wpmz/waylines.wpml': strToU8(buildWaylinesXml(result, settings, name)),
     },
     { level: 6 },
