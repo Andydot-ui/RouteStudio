@@ -321,6 +321,11 @@ input[type='checkbox'] { accent-color: var(--win-accent); }
 .input-marker.is-selected { box-shadow: 0 0 0 3px var(--win-accent-subtle), 0 1px 6px rgba(0, 0, 0, .4); }
 .camera-view { border-color: color-mix(in srgb, var(--win-accent) 55%, transparent); background: color-mix(in srgb, var(--win-accent) 14%, transparent); }
 
+/* Satellite label overlay ------------------------------------------------ */
+/* The OSM street tiles carry a pale background; multiply blending cancels it
+   against the imagery and leaves only the dark Chinese labels and road lines. */
+.label-overlay { mix-blend-mode: multiply; opacity: .88; }
+
 /* In-map drafting coach ------------------------------------------------ */
 .draw-coach {
   position: absolute;

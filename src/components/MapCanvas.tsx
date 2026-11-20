@@ -11,6 +11,7 @@ type MapCanvasProps = {
   baseMap: BaseMap
   showNumbers: boolean
   showCamera: boolean
+  showLabels: boolean
   drawing: boolean
   onAddPoint: (point: LngLat) => void
   onSetInput: (points: LngLat[]) => void
@@ -23,14 +24,14 @@ type MapCanvasProps = {
 
 type MapState = {
   map: L.Map
-  baseLayers: L.TileLayer[]
+  baseLayers: BaseLayerStack
   renderLayer: L.LayerGroup
   drawLayer: L.LayerGroup
   editLayer: L.LayerGroup
   previewLayer: L.LayerGroup
 }
 
-type TileSource = { url: string; attribution: string; maxZoom: number; subdomains?: string[] }
+type TileSource = { url: string; attribution: string; maxZoom: number; subdomains?: string[]; className?: string }
 type BaseMapSpec = { base: TileSource; overlay?: TileSource }
 
 // Both base maps are published in the global WGS 84 / Web Mercator grid, the same datum a
@@ -41,9 +42,12 @@ type BaseMapSpec = { base: TileSource; overlay?: TileSource }
 // chain that silently breaks the moment one formula is off.
 //
 // CARTO's free raster tiles now carry an "API KEY REQUIRED" watermark for anonymous use, so
-// nothing here points at basemaps.cartocdn.com. The street map uses the tile.openstreetmap.de
-// mirror, which serves Chinese place and road labels with no watermark; the satellite view is
-// bare Esri imagery because Esri's reference-label layer is empty over China.
+// nothing here points at basemaps.cartocdn.com. The satellite annotation overlay and the
+// street basemap both use the tile.openstreetmap.de mirror: it serves Chinese place and road
+// labels with no watermark and is CORS-enabled. Over imagery the same tiles are blended with
+// CSS `multiply`, so their pale background drops out and only the dark labels remain - the
+// free, key-less equivalent of a transparent label layer. Esri's own reference-label layer is
+// empty over China, which is why it is not used here.
 const ESRI_MAX_ZOOM = 19
 const OSM_DE_MAX_ZOOM = 18
 
@@ -53,6 +57,13 @@ const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
       url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       attribution: '影像 © Esri, Maxar',
       maxZoom: ESRI_MAX_ZOOM,
+    },
+    overlay: {
+      url: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      attribution: '注记 © OSM',
+      maxZoom: OSM_DE_MAX_ZOOM,
+      className: 'label-overlay',
     },
   },
   streets: {
@@ -73,17 +84,21 @@ const createTileLayer = (source: TileSource) => L.tileLayer(source.url, {
   keepBuffer: 5,
   updateWhenIdle: false,
   updateWhenZooming: true,
+  className: source.className,
 })
 
 // The imagery and annotation tiles are separate layers, so switching base maps
-// always swaps the whole stack instead of a single layer.
-const addBaseLayers = (map: L.Map, baseMap: BaseMap) => {
+// always swaps the whole stack instead of a single layer. The satellite annotation
+// overlay is returned unattached so a dedicated effect can add or remove it when the
+// user toggles the label layer.
+type BaseLayerStack = { base: L.TileLayer[]; label: L.TileLayer | null }
+const addBaseLayers = (map: L.Map, baseMap: BaseMap): BaseLayerStack => {
   const spec = BASE_LAYERS[baseMap]
-  const layers = [createTileLayer(spec.base)]
-  if (spec.overlay) layers.push(createTileLayer(spec.overlay))
-  layers.forEach((layer) => layer.addTo(map))
-  layers[0].bringToBack()
-  return layers
+  const base = [createTileLayer(spec.base)]
+  const label = spec.overlay ? createTileLayer(spec.overlay) : null
+  base.forEach((layer) => layer.addTo(map))
+  base[0].bringToBack()
+  return { base, label }
 }
 
 // The tiles and the route share one datum, so display needs no conversion at all.
@@ -97,6 +112,7 @@ export function MapCanvas({
   baseMap,
   showNumbers,
   showCamera,
+  showLabels,
   drawing,
   onAddPoint,
   onSetInput,
@@ -286,9 +302,23 @@ export function MapCanvas({
     const state = stateRef.current
     if (!state || appliedBaseMapRef.current === baseMap) return
     appliedBaseMapRef.current = baseMap
-    state.baseLayers.forEach((layer) => state.map.removeLayer(layer))
+    state.baseLayers.base.forEach((layer) => state.map.removeLayer(layer))
+    if (state.baseLayers.label) state.map.removeLayer(state.baseLayers.label)
     state.baseLayers = addBaseLayers(state.map, baseMap)
   }, [baseMap])
+
+  // The label overlay is its own tile layer so it can be switched off without touching
+  // the imagery underneath. It is only ever created for the satellite stack.
+  useEffect(() => {
+    const state = stateRef.current
+    const label = state?.baseLayers.label
+    if (!state || !label) return
+    if (showLabels) {
+      if (!state.map.hasLayer(label)) label.addTo(state.map)
+    } else if (state.map.hasLayer(label)) {
+      state.map.removeLayer(label)
+    }
+  }, [baseMap, showLabels])
 
   useEffect(() => {
     const state = stateRef.current
