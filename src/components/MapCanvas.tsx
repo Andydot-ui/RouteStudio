@@ -3,7 +3,6 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { LngLat, PlannerDefinition, PlannerDraft, PlannerResult } from '../lib/types'
 import { PLANNER_DEFS } from '../lib/planners'
-import { gcj02ToWgs84, wgs84ToGcj02 } from '../lib/coords'
 
 export type BaseMap = 'satellite' | 'streets'
 type MapCanvasProps = {
@@ -34,32 +33,37 @@ type MapState = {
 type TileSource = { url: string; attribution: string; maxZoom: number; subdomains?: string[] }
 type BaseMapSpec = { base: TileSource; overlay?: TileSource }
 
-// AMap raster tiles are the only base map source: webrd serves the street map,
-// webst style=6 serves imagery and webst style=8 the Chinese road and place annotations.
-const AMAP_SUBDOMAINS = ['01', '02', '03', '04']
-const AMAP_MAX_ZOOM = 18
+// Both base maps are published in the global WGS 84 / Web Mercator grid, the same datum a
+// drone's GPS reports. Picking a point on the map therefore yields its true coordinate with
+// no datum correction anywhere in the app, which is what makes exported routes land exactly
+// where they were drawn. AMap and the other Chinese providers shift their tiles into GCJ-02,
+// so every coordinate would have to be converted on the way in and back on the way out - a
+// chain that silently breaks the moment one formula is off.
+const ESRI_MAX_ZOOM = 19
+const CARTO_MAX_ZOOM = 20
 
+// Attribution strings are kept short on purpose: Leaflet lays them out right-aligned on a
+// single line, and a long combined credit would run under the centred waypoint stepper.
 const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
   satellite: {
     base: {
-      url: 'https://webst{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
-      subdomains: AMAP_SUBDOMAINS,
-      attribution: '影像 © 高德地图',
-      maxZoom: AMAP_MAX_ZOOM,
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: '影像 © Esri, Maxar',
+      maxZoom: ESRI_MAX_ZOOM,
     },
     overlay: {
-      url: 'https://webst{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
-      subdomains: AMAP_SUBDOMAINS,
-      attribution: '注记 © 高德地图',
-      maxZoom: AMAP_MAX_ZOOM,
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '注记 © CARTO, OSM',
+      maxZoom: CARTO_MAX_ZOOM,
     },
   },
   streets: {
     base: {
-      url: 'https://webrd{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
-      subdomains: AMAP_SUBDOMAINS,
-      attribution: '街道 © 高德地图',
-      maxZoom: AMAP_MAX_ZOOM,
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '街道 © CARTO, OSM',
+      maxZoom: CARTO_MAX_ZOOM,
     },
   },
 }
@@ -85,12 +89,8 @@ const addBaseLayers = (map: L.Map, baseMap: BaseMap) => {
   return layers
 }
 
-// Route data stays WGS 84 everywhere in the app. The tiles are GCJ-02, so geometry is
-// converted on the way into Leaflet and map hits are converted back on the way out.
-const displayPoint = (point: LngLat): L.LatLngTuple => {
-  const [lon, lat] = wgs84ToGcj02(point[0], point[1])
-  return [lat, lon]
-}
+// The tiles and the route share one datum, so display needs no conversion at all.
+const displayPoint = (point: LngLat): L.LatLngTuple => [point[1], point[0]]
 
 const markerColor = (def: PlannerDefinition) => def.color
 
@@ -131,7 +131,7 @@ export function MapCanvas({
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-    const initialCenter: LngLat = draftRef.current.input[0] ?? [113.66425, 34.8298]
+    const initialCenter: LngLat = draftRef.current.input[0] ?? [113.662923, 34.830072]
     const map = L.map(host, {
       zoomControl: false,
       attributionControl: true,
@@ -151,9 +151,8 @@ export function MapCanvas({
 
     // While the user is drawing, the boundary follows the placed control points and a
     // dashed edge follows the cursor. The preview polygon is filled so the area that
-    // will actually be covered is visible before the click is committed. Tiles use
-    // GCJ-02 display coordinates; these overlays never leave the map, so they use the
-    // Leaflet latlng directly and do not need a datum round trip.
+    // will actually be covered is visible before the click is committed. Tiles and
+    // route share the WGS 84 datum, so these overlays use the Leaflet latlng as-is.
     drawOverlayRef.current = () => {
       const state = stateRef.current
       if (!state) return
@@ -210,7 +209,7 @@ export function MapCanvas({
 
     map.on('click', (event: L.LeafletMouseEvent) => {
       if (!drawingRef.current) return
-      callbacksRef.current.onAddPoint(gcj02ToWgs84(event.latlng.lng, event.latlng.lat))
+      callbacksRef.current.onAddPoint([event.latlng.lng, event.latlng.lat] as LngLat)
     })
     map.on('dblclick', (event: L.LeafletMouseEvent) => {
       L.DomEvent.preventDefault(event.originalEvent)
@@ -401,7 +400,7 @@ export function MapCanvas({
       })
       marker.on('dragend', () => {
         const next = marker.getLatLng()
-        const moved = gcj02ToWgs84(next.lng, next.lat)
+        const moved = [next.lng, next.lat] as LngLat
         const updated = draftRef.current.input.map((item, itemIndex) =>
           itemIndex === index ? (moved as LngLat) : item,
         )

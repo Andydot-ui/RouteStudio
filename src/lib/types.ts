@@ -86,6 +86,9 @@ export type PlannerDraft = {
   selectedIndex: number | null
   importedName?: string
   importedWaypoints?: Waypoint[]
+  // Datum revision the control points were captured against. Absent on data saved before
+  // the base maps moved to native WGS 84; see src/lib/datum.ts.
+  datum?: number
 }
 
 export type PlannerResult = {

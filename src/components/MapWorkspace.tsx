@@ -69,7 +69,7 @@ export function MapWorkspace({ draft, result, baseMap, setBaseMap, showNumbers, 
       <span className="wp-stepper-divider"/>
       <button type="button" className="wp-preview-ring" aria-label="退出航点预览" title="退出预览" onClick={() => setPreviewIndex(null)}>{preview ? <span className="wp-preview-dot"/> : <Eye size={15}/>}</button>
     </div>}
-    <div className={`map-bottom-card${drafting ? ' is-drafting' : ''}`}><div className="coordinate-mark"><Crosshair size={14}/></div><div><span>WGS 84</span><strong>{draft.input.length ? `${draft.input[0][1].toFixed(6)}, ${draft.input[0][0].toFixed(6)}` : '点击开始布置航线'}</strong></div><button type="button" aria-label="复制坐标" onClick={() => { const first = draft.input[0] ?? [113.66425, 34.8298]; navigator.clipboard?.writeText(`${first[1]}, ${first[0]}`).then(() => onNotice('坐标已复制')).catch(() => onNotice('复制失败', 'error')) }}><Copy size={15}/></button></div>
+    <div className={`map-bottom-card${drafting ? ' is-drafting' : ''}`}><div className="coordinate-mark"><Crosshair size={14}/></div><div><span>WGS 84</span><strong>{draft.input.length ? `${draft.input[0][1].toFixed(6)}, ${draft.input[0][0].toFixed(6)}` : '点击开始布置航线'}</strong></div><button type="button" aria-label="复制坐标" onClick={() => { const first = draft.input[0] ?? [113.662923, 34.830072]; navigator.clipboard?.writeText(`${first[1]}, ${first[0]}`).then(() => onNotice('坐标已复制')).catch(() => onNotice('复制失败', 'error')) }}><Copy size={15}/></button></div>
     <div className="map-help-hint"><MousePointer2 size={13}/>右键拖动地图 <span>·</span> {amount ? `${amount} 个控制点` : '左键添加节点'} <span>·</span> 拖动控制点调整</div>
   </main>
 }

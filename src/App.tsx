@@ -8,6 +8,7 @@ import { MobileLayer, type MobilePanel } from './components/MobileLayer'
 import { PlannerGlyph } from './components/PlannerGlyph'
 import { buildKmz, buildWaylinesXml, downloadBytes, importMissionBuffer, validateWpmlMission } from './lib/dji'
 import { calculatePlan, createDemoDraft, DEFAULT_DRAFT, PLANNER_DEFS, sanitizeSettings } from './lib/planners'
+import { migrateDraft, DATUM_VERSION } from './lib/datum'
 import type { BaseMap } from './components/MapCanvas'
 import type { LngLat, PlannerDraft, PlannerKind, PlannerSettings, Waypoint } from './lib/types'
 import './App.css'
@@ -17,9 +18,50 @@ const STORAGE_KEY = 'dji-route-studio-missions-v1'
 const SESSION_KEY = 'dji-route-studio-session-v1'
 const THEME_KEY = 'dji-route-studio-theme'
 function cloneDraft(draft: PlannerDraft) { return structuredClone(draft) }
-function readSession(): PlannerDraft { try { const value = sessionStorage.getItem(SESSION_KEY); if (!value) return cloneDraft(DEFAULT_DRAFT); const parsed = JSON.parse(value) as PlannerDraft; if (!parsed || !Array.isArray(parsed.input) || !parsed.settings) return cloneDraft(DEFAULT_DRAFT); return { ...parsed, kind: 'grid', settings: sanitizeSettings({ ...DEFAULT_DRAFT.settings, ...parsed.settings }) } } catch { return cloneDraft(DEFAULT_DRAFT) } }
+// The session wrapper records when the draft was last stored, which is what lets the datum
+// migration tell pre-fix data from post-fix data. The bare-draft form written by earlier
+// builds carries no timestamp and is therefore treated as pre-fix.
+type SessionRecord = { v: 2; savedAt: number; draft: PlannerDraft }
+function parseDraft(value: unknown): PlannerDraft | null {
+  if (!value || typeof value !== 'object') return null
+  const parsed = value as PlannerDraft
+  if (!Array.isArray(parsed.input) || !parsed.settings) return null
+  return { ...parsed, kind: 'grid', settings: sanitizeSettings({ ...DEFAULT_DRAFT.settings, ...parsed.settings }) }
+}
+function readSession(): PlannerDraft {
+  try {
+    const value = sessionStorage.getItem(SESSION_KEY)
+    if (!value) return cloneDraft(DEFAULT_DRAFT)
+    const stored = JSON.parse(value) as unknown
+    if (stored && typeof stored === 'object' && (stored as SessionRecord).v === 2) {
+      const record = stored as SessionRecord
+      const draft = parseDraft(record.draft)
+      if (!draft) return cloneDraft(DEFAULT_DRAFT)
+      return migrateDraft(draft, Number.isFinite(record.savedAt) ? record.savedAt : null)
+    }
+    const draft = parseDraft(stored)
+    if (!draft) return cloneDraft(DEFAULT_DRAFT)
+    return migrateDraft(draft, null)
+  } catch { return cloneDraft(DEFAULT_DRAFT) }
+}
+function writeSession(draft: PlannerDraft) {
+  // Every draft this build stores is stamped with the current datum, so the migration never
+  // has to trust the machine clock for data that was drawn on the WGS 84 base maps.
+  const record: SessionRecord = { v: 2, savedAt: Date.now(), draft: { ...draft, datum: DATUM_VERSION } }
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(record))
+}
 function readTheme(): Theme { const value = localStorage.getItem(THEME_KEY); if (value === 'light' || value === 'dark') return value; return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' }
-function readMissions(): SavedMission[] { try { const value = localStorage.getItem(STORAGE_KEY); const parsed = value ? JSON.parse(value) as unknown : []; return Array.isArray(parsed) ? parsed as SavedMission[] : [] } catch { return [] } }
+function readMissions(): SavedMission[] {
+  try {
+    const value = localStorage.getItem(STORAGE_KEY)
+    const parsed = value ? JSON.parse(value) as unknown : []
+    if (!Array.isArray(parsed)) return []
+    return (parsed as SavedMission[]).map((mission) => {
+      const savedAt = Date.parse(mission.updatedAt)
+      return { ...mission, draft: migrateDraft(mission.draft, Number.isFinite(savedAt) ? savedAt : null) }
+    })
+  } catch { return [] }
+}
 function postToast(message: string, tone: 'success' | 'error' | 'info' = 'success') { window.dispatchEvent(new CustomEvent('route-toast', { detail: { message, tone } })) }
 function safeFilename(name: string) { return (name.trim() || 'DJI 航线任务').replace(/[/:*?"<>|]/g, '_') }
 function applyMissionName(draft: PlannerDraft, name: string): PlannerDraft { const importedBase = draft.importedName?.replace(/\.(kmz|kml)$/i, ''); return { ...draft, settings: { ...draft.settings, name }, importedWaypoints: draft.importedWaypoints && importedBase !== name ? undefined : draft.importedWaypoints } }
@@ -47,7 +89,7 @@ function App() {
   const lastDrawTime = useRef(0)
   const actionsRef = useRef({ save: () => undefined as void, exportKmz: () => undefined as void, waypointCount: 0 })
 
-  useEffect(() => { sessionStorage.setItem(SESSION_KEY, JSON.stringify(draft)) }, [draft])
+  useEffect(() => { writeSession(draft) }, [draft])
   useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; localStorage.setItem(THEME_KEY, theme); document.querySelector('meta[name=theme-color]')?.setAttribute('content', theme === 'dark' ? '#202020' : '#f3f3f3') }, [theme])
   useEffect(() => { const onToast = (event: Event) => { const data = (event as CustomEvent<{ message: string; tone: string }>).detail; setToast({ ...data, id: Date.now() }) }; window.addEventListener('route-toast', onToast); return () => window.removeEventListener('route-toast', onToast) }, [])
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(null), 3300); return () => window.clearTimeout(timeout) }, [toast])
@@ -67,7 +109,7 @@ function App() {
   const onName = (name: string) => setDraft((current) => applyMissionName(current, name))
   const selectPlanner = (_kind: PlannerKind) => { setDraft((current) => ({ ...current, kind: 'grid', input: [], selectedIndex: null, importedWaypoints: undefined })); setDrawing(true); setWorkspaceMode('planner'); setDrawerOpen(false); setMobilePanel(null) }
   const loadDemo = () => { commit(createDemoDraft('grid')); setDrawing(false); setMobilePanel(null); setDrawerOpen(false); postToast('已载入当前航线类型的示例任务') }
-  const saveMission = () => { const mission: SavedMission = { id: savedName || crypto.randomUUID(), name: draft.settings.name || '未命名任务', kind: 'grid', updatedAt: new Date().toISOString(), draft: cloneDraft(draft) }; const next = missions.filter((item) => item.id !== mission.id).concat(mission); setMissions(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSavedName(mission.name); postToast('任务已保存到本地浏览器') }
+  const saveMission = () => { const mission: SavedMission = { id: savedName || crypto.randomUUID(), name: draft.settings.name || '未命名任务', kind: 'grid', updatedAt: new Date().toISOString(), draft: { ...cloneDraft(draft), datum: DATUM_VERSION } }; const next = missions.filter((item) => item.id !== mission.id).concat(mission); setMissions(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSavedName(mission.name); postToast('任务已保存到本地浏览器') }
   const openMission = (mission: SavedMission) => { const restored = cloneDraft(mission.draft); restored.kind = 'grid'; commit(restored); setWorkspaceMode('planner'); setMobilePanel(null); setSavedName(mission.name); postToast('任务已打开') }
   const deleteMission = (id: string) => { const next = missions.filter((item) => item.id !== id); setMissions(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); postToast('已删除保存的任务', 'info') }
   const importFile = () => fileRef.current?.click()

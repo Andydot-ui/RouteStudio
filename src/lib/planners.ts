@@ -198,18 +198,21 @@ const clamp = (n: number, min: number, max: number) =>
   Math.min(max, Math.max(min, n))
 const round = (n: number, digits = 7) => Number(n.toFixed(digits))
 
+// These sample coordinates sit on the Zhengzhou school block in the WGS 84 imagery the map
+// now shows. They were re-derived from the original values, which had been placed against
+// GCJ-02 tiles; see src/lib/datum.ts.
 export const SAMPLE_LINE: LngLat[] = [
-  [113.66474, 34.83059],
-  [113.66474, 34.8289],
+  [113.663413, 34.830861],
+  [113.663413, 34.829172],
 ]
 
 export const SAMPLE_POLYGON: LngLat[] = [
-  [113.66379, 34.82892],
-  [113.66533, 34.82892],
-  [113.66552, 34.83032],
-  [113.66448, 34.83095],
-  [113.66394, 34.8306],
-  [113.66379, 34.82892],
+  [113.662464, 34.829192],
+  [113.664002, 34.829191],
+  [113.664192, 34.830591],
+  [113.663153, 34.831221],
+  [113.662613, 34.830872],
+  [113.662464, 34.829192],
 ]
 
 export const DEFAULT_DRAFT: PlannerDraft = {
@@ -230,15 +233,15 @@ export function createDemoDraft(kind: PlannerKind): PlannerDraft {
 
   if (kind === 'points') {
     common.input = [
-      [113.66485, 34.83038],
-      [113.66445, 34.82977],
-      [113.66386, 34.82977],
-      [113.66384, 34.83034],
+      [113.663523, 34.830651],
+      [113.663123, 34.830042],
+      [113.662534, 34.830042],
+      [113.662514, 34.830612],
     ]
   } else if (kind === 'line') {
     common.input = [
-      [113.66474, 34.83059],
-      [113.66474, 34.8289],
+      [113.663413, 34.830861],
+      [113.663413, 34.829172],
     ]
   } else if (kind === 'corridor') {
     common.input = SAMPLE_LINE
@@ -252,7 +255,7 @@ export function createDemoDraft(kind: PlannerKind): PlannerDraft {
       common.settings.sideOverlap = 70
     }
   } else {
-    common.input = [[113.66425, 34.8298]]
+    common.input = [[113.662923, 34.830072]]
     common.settings.orbitRadius = 55
     common.settings.orbitHeight = 60
     common.settings.gimbalPitch = -35
