@@ -39,11 +39,14 @@ type BaseMapSpec = { base: TileSource; overlay?: TileSource }
 // where they were drawn. AMap and the other Chinese providers shift their tiles into GCJ-02,
 // so every coordinate would have to be converted on the way in and back on the way out - a
 // chain that silently breaks the moment one formula is off.
+//
+// CARTO's free raster tiles now carry an "API KEY REQUIRED" watermark for anonymous use, so
+// nothing here points at basemaps.cartocdn.com. The street map uses the tile.openstreetmap.de
+// mirror, which serves Chinese place and road labels with no watermark; the satellite view is
+// bare Esri imagery because Esri's reference-label layer is empty over China.
 const ESRI_MAX_ZOOM = 19
-const CARTO_MAX_ZOOM = 20
+const OSM_DE_MAX_ZOOM = 18
 
-// Attribution strings are kept short on purpose: Leaflet lays them out right-aligned on a
-// single line, and a long combined credit would run under the centred waypoint stepper.
 const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
   satellite: {
     base: {
@@ -51,19 +54,13 @@ const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
       attribution: '影像 © Esri, Maxar',
       maxZoom: ESRI_MAX_ZOOM,
     },
-    overlay: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-      subdomains: ['a', 'b', 'c', 'd'],
-      attribution: '注记 © CARTO, OSM',
-      maxZoom: CARTO_MAX_ZOOM,
-    },
   },
   streets: {
     base: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      subdomains: ['a', 'b', 'c', 'd'],
-      attribution: '街道 © CARTO, OSM',
-      maxZoom: CARTO_MAX_ZOOM,
+      url: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      attribution: '街道 © OpenStreetMap 贡献者',
+      maxZoom: OSM_DE_MAX_ZOOM,
     },
   },
 }
