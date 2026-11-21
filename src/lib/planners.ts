@@ -501,22 +501,29 @@ export function polygonsToRings(points: LngLat[]) {
   return closeRing(points).slice(0, -1)
 }
 
-// Scan direction that yields the shortest mission, the rule DJI Terra and XiaoQu both apply.
-// For each edge direction of the drawn area we compute the path an actual lawnmower would
-// fly - lane count comes from the perpendicular span, lanes are then spread evenly so the
-// requested overlap is never violated - and keep the cheapest. Minimising the lane count
-// alone is not enough: on a near-square block two orientations tie on count while differing
-// by a full lane of travel, and the tie-break decides whether the mission is 90 waypoints or
-// 78. Returns a rotation in the planner's [0,180) axis convention, where 0 means the lanes
-// run east-west.
+// Scan direction for the drawn area.
+//
+// The rule is shortest flight, which is what DJI Terra and XiaoQu Route Planner do: for each
+// edge direction we cost the lawnmower that would actually fly (lanes x laneLength + turns,
+// with lane count from ceil(span / spacing)) and keep the cheapest. On the field-verified
+// reference block that reproduces XiaoQu's orientation and its exact waypoint count.
+//
+// Near-square blocks need a tie-break, because two orientations can differ by under a percent
+// and then a one-pixel change of a corner flips the whole mission. Within STABILITY_BAND of
+// the best path we prefer the orientation whose lanes run along the longer side of the block,
+// which is the more natural-looking mission and no worse to fly.
+//
+// Returns a rotation in the planner's [0,180) axis convention, 0 meaning lanes run east-west.
+const STABILITY_BAND = 0.03
 export function autoScanRotation(points: LngLat[], spacing: number): number {
   const polygon = polygonsToRings(points)
   if (polygon.length < 3) return 0
   const origin = polygon[0]
   const local = polygon.map((point) => projectToLocal(point, origin))
   const laneSpacing = Math.max(2, spacing)
-  let bestRotation = 0
-  let bestPath = Number.POSITIVE_INFINITY
+
+  type Candidate = { rotation: number; path: number; alongness: number }
+  const candidates: Candidate[] = []
   for (let i = 0; i < local.length; i += 1) {
     const a = local[i]
     const b = local[(i + 1) % local.length]
@@ -541,18 +548,19 @@ export function autoScanRotation(points: LngLat[], spacing: number): number {
     const spanAcross = maxAcross - minAcross
     const laneLength = maxAlong - minAlong
     if (spanAcross < laneSpacing || laneLength < 1) continue
-    // Same rounding the lawnmower builder applies: whole intervals, lanes spread evenly.
     const intervals = Math.max(1, Math.ceil(spanAcross / laneSpacing))
     const lanes = intervals + 1
-    const actualSpacing = spanAcross / intervals
-    const path = lanes * laneLength + intervals * actualSpacing
-    if (path < bestPath - 1e-6) {
-      bestPath = path
-      const degrees = (deg(Math.atan2(uy, ux)) % 180 + 180) % 180
-      bestRotation = degrees
-    }
+    const path = lanes * laneLength + intervals * (spanAcross / intervals)
+    const degrees = (deg(Math.atan2(uy, ux)) % 180 + 180) % 180
+    // >1 when this lane direction runs along the longer dimension of the block.
+    candidates.push({ rotation: degrees, path, alongness: laneLength / Math.max(1e-6, spanAcross) })
   }
-  return bestRotation
+  if (!candidates.length) return 0
+
+  const bestPath = Math.min(...candidates.map((c) => c.path))
+  const nearTies = candidates.filter((c) => c.path <= bestPath * (1 + STABILITY_BAND))
+  nearTies.sort((p, q) => q.alongness - p.alongness || p.path - q.path)
+  return nearTies[0].rotation
 }
 
 export function buildLawnmowerRings(
