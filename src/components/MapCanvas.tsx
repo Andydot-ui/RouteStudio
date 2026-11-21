@@ -49,32 +49,34 @@ type BaseMapSpec = { base: TileSource; overlay?: TileSource; datum: TileDatum }
 //
 // CARTO's free raster tiles carry an "API KEY REQUIRED" watermark for anonymous use, so
 // nothing here points at basemaps.cartocdn.com.
-const ESRI_MAX_ZOOM = 19
 const AMAP_MAX_ZOOM = 18
-const OSM_DE_MAX_ZOOM = 18
 
+// Both basemaps are AMap. Its satellite stack is what the reference screenshot shows: AMap
+// imagery with AMap's own annotation layer on top, which is drawn as white text with a dark
+// outline and carries the POI / building-number density expected of a Chinese basemap. Because
+// imagery and labels come from the same provider they are aligned by construction, and the
+// label tiles already have a fully transparent card, so no blend mode or pixel work is needed -
+// the previous Esri+OSM stack had to fight an opaque card, which is what made its labels either
+// illegible or blocked.
+//
+// AMap publishes GCJ-02, so both stacks declare that datum and every coordinate is converted
+// only for display (see displayPoint/readPoint).
 const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
   satellite: {
     base: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      attribution: '影像 © Esri, Maxar',
-      maxZoom: ESRI_MAX_ZOOM,
+      url: 'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
+      subdomains: ['1', '2', '3', '4'],
+      attribution: '影像 © 高德地图',
+      maxZoom: AMAP_MAX_ZOOM,
     },
-    // Annotation-only layer: transparent tiles carrying place names and road labels, blended
-    // with `multiply` so their pale card drops out and only the dark labels sit on the photo.
-    // Kept on the OSM mirror. AMap's style=8 tiles were tried here and rejected: they paint
-    // large opaque pale area fills (residential blocks, average RGB 205,196,171 in this area),
-    // and because their alpha-0 pixels carry near-white RGB those fills survive every blend as
-    // either pale patches or - under multiply - solid black blocks. Legibility is instead
-    // raised with a contrast filter on the OSM tiles, which composite predictably.
     overlay: {
-      url: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
-      subdomains: ['a', 'b', 'c'],
-      attribution: '注记 © OSM',
-      maxZoom: OSM_DE_MAX_ZOOM,
+      url: 'https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}',
+      subdomains: ['1', '2', '3', '4'],
+      attribution: '注记 © 高德地图',
+      maxZoom: AMAP_MAX_ZOOM,
       className: 'label-overlay',
     },
-    datum: 'wgs84',
+    datum: 'gcj02',
   },
   streets: {
     base: {
@@ -98,87 +100,6 @@ const createTileLayer = (source: TileSource) => L.tileLayer(source.url, {
   className: source.className,
 })
 
-// Label tiles are drawn as dark glyphs on an opaque pale card, and no CSS blend mode can be
-// used to drop that card: blending composites colour and ignores alpha, so the card either
-// covers the photo (`normal`) or is multiplied over it as grey/black blocks (`multiply`).
-// The card has to be removed from the pixels themselves.
-//
-// Each tile is therefore decoded into a canvas and rewritten: light, low-saturation pixels
-// become fully transparent and the surviving dark ink is recoloured to a neutral near-black.
-// The result has real alpha, so it composites normally over the imagery and only the labels
-// show. `keep = (cutoff - luminance) / range` ramps in below mid-grey and `desat` rejects
-// coloured fills such as parks and water, which would otherwise survive as tinted patches.
-const LABEL_CARD_CUTOFF = 214
-const LABEL_CARD_RANGE = 96
-const LABEL_INK: [number, number, number] = [20, 20, 22]
-
-const createLabelTileLayer = (source: TileSource) => {
-  const Layer = L.TileLayer.extend({
-    createTile(coords: L.Coords) {
-      const tile = document.createElement('canvas')
-      const size = this.getTileSize()
-      tile.width = size.x
-      tile.height = size.y
-      const url = L.Util.template(this._url, {
-        ...coords,
-        s: this._getSubdomain(coords),
-        x: coords.x,
-        y: coords.y,
-        z: this._getZoomForUrl(),
-      })
-      const image = new Image()
-      image.crossOrigin = 'anonymous'
-      image.onload = () => {
-        const context = tile.getContext('2d', { willReadFrequently: true })
-        if (!context) return
-        const width = Math.min(size.x, image.naturalWidth || size.x)
-        const height = Math.min(size.y, image.naturalHeight || size.y)
-        context.drawImage(image, 0, 0, width, height)
-        try {
-          const frame = context.getImageData(0, 0, width, height)
-          const data = frame.data
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i]
-            const g = data[i + 1]
-            const b = data[i + 2]
-            const alpha = data[i + 3] / 255
-            if (alpha === 0) continue
-            const luminance = (r + g + b) / 3
-            const saturation = Math.max(r, g, b) - Math.min(r, g, b)
-            const keep = Math.min(1, Math.max(0, (LABEL_CARD_CUTOFF - luminance) / LABEL_CARD_RANGE))
-            const neutral = Math.min(1, Math.max(0, (40 - saturation) / 25))
-            const mask = keep * neutral
-            data[i] = LABEL_INK[0]
-            data[i + 1] = LABEL_INK[1]
-            data[i + 2] = LABEL_INK[2]
-            data[i + 3] = Math.round(255 * alpha * mask)
-          }
-          context.putImageData(frame, 0, 0)
-        } catch {
-          // A tainted canvas cannot be read back; leaving the decoded image in place would put
-          // the pale card over the photo, so drop the tile instead of showing a white block.
-          context.clearRect(0, 0, width, height)
-        }
-        // Leaflet expects the tile to signal readiness by firing `load` on its element; using
-        // the canvas itself as the element means marking it loaded once the pixels are drawn.
-        tile.classList.add('leaflet-tile-loaded')
-        tile.dispatchEvent(new Event('load'))
-      }
-      image.onerror = () => tile.dispatchEvent(new Event('error'))
-      image.src = url
-      return tile
-    },
-  })
-  return new (Layer as unknown as new (url: string, options: L.TileLayerOptions) => L.TileLayer)(source.url, {
-    attribution: source.attribution,
-    maxZoom: source.maxZoom,
-    subdomains: source.subdomains ?? ['a', 'b', 'c'],
-    keepBuffer: 5,
-    updateWhenIdle: false,
-    updateWhenZooming: true,
-    className: source.className,
-  })
-}
 
 // The imagery and annotation tiles are separate layers, so switching base maps
 // always swaps the whole stack instead of a single layer. The satellite annotation
@@ -188,7 +109,9 @@ type BaseLayerStack = { base: L.TileLayer[]; label: L.TileLayer | null }
 const addBaseLayers = (map: L.Map, baseMap: BaseMap): BaseLayerStack => {
   const spec = BASE_LAYERS[baseMap]
   const base = [createTileLayer(spec.base)]
-  const label = spec.overlay ? createLabelTileLayer(spec.overlay) : null
+  // AMap's annotation tiles already carry a transparent card, so they are added as-is; the
+  // canvas rewriter is only needed for sources that paint an opaque card behind the labels.
+  const label = spec.overlay ? createTileLayer(spec.overlay) : null
   base.forEach((layer) => layer.addTo(map))
   base[0].bringToBack()
   return { base, label }
