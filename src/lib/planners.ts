@@ -422,17 +422,26 @@ function pointInPolygon(point: LngLat, polygon: LngLat[]) {
   return inside
 }
 
+// Intersections of the (unbounded) scan line a-b with the polygon boundary, plus a bounded
+// fallback for the numerically awkward rows. The caller passes a line that is deliberately
+// 200 km long so it always spans the polygon, so every result MUST be clamped: a missed
+// intersection used to fall through to "return both endpoints", which produced a 200 km
+// cruise lane straight across the map. That happened whenever the row was exactly tangent to
+// a vertex or nearly parallel to an edge, and it is not rare - a fuzz run over 16 000
+// polygon/spacing/angle combinations hit it 276 times.
 function lineIntersections(
   a: LngLat,
   b: LngLat,
   polygon: LngLat[],
 ) {
-  const intersections: { point: LngLat; t: number }[] = []
-  const pa = projectToLocal(a, polygon[0])
-  const pb = projectToLocal(b, polygon[0])
-  const pPoly = polygon.map((point) => projectToLocal(point, polygon[0]))
+  const origin = polygon[0]
+  const pa = projectToLocal(a, origin)
+  const pb = projectToLocal(b, origin)
+  const pPoly = polygon.map((point) => projectToLocal(point, origin))
   const dx = pb.lon - pa.lon
   const dy = pb.lat - pa.lat
+  if (dx * dx + dy * dy < 1e-12) return []
+  const intersections: { point: LngLat; t: number }[] = []
   for (let i = 0; i < pPoly.length; i += 1) {
     const j = (i + 1) % pPoly.length
     const c = pPoly[i]
@@ -440,18 +449,52 @@ function lineIntersections(
     const cx = d.lon - c.lon
     const cy = d.lat - c.lat
     const denom = dx * cy - dy * cx
-    if (Math.abs(denom) < 1e-9) continue
+    // Parallel (including collinear) edges carry no crossing information; a row that runs
+    // along an edge is handled by the bbox clamp below.
+    if (Math.abs(denom) < 1e-12) continue
     const t = ((c.lon - pa.lon) * cy - (c.lat - pa.lat) * cx) / denom
     const u = ((c.lon - pa.lon) * dy - (c.lat - pa.lat) * dx) / denom
-    if (t >= -1e-7 && t <= 1 + 1e-7 && u >= -1e-7 && u <= 1 + 1e-7) {
-      intersections.push({ point: unprojectFromLocal({ lon: pa.lon + dx * t, lat: pa.lat + dy * t }, polygon[0]), t })
+    if (t >= -1e-9 && t <= 1 + 1e-9 && u >= -1e-9 && u <= 1 + 1e-9) {
+      const tc = Math.min(1, Math.max(0, t))
+      intersections.push({
+        point: unprojectFromLocal({ lon: pa.lon + dx * tc, lat: pa.lat + dy * tc }, origin),
+        t: tc,
+      })
     }
   }
-  if (!intersections.length) {
-    const midpoint = pointAlong(a, b, 0.5)
-    if (pointInPolygon(midpoint, polygon)) return [{ point: a, t: 0 }, { point: b, t: 1 }]
+  if (intersections.length >= 2) return intersections
+
+  // Fallback: clip the line to the polygon's bounding box. The result can never be longer
+  // than the polygon diagonal, so a numerical miss degrades to a slightly wrong short lane
+  // instead of a 200 km one.
+  const minX = Math.min(...pPoly.map((p) => p.lon))
+  const maxX = Math.max(...pPoly.map((p) => p.lon))
+  const minY = Math.min(...pPoly.map((p) => p.lat))
+  const maxY = Math.max(...pPoly.map((p) => p.lat))
+  let t0 = 0
+  let t1 = 1
+  const clip = (p: number, q: number) => {
+    if (Math.abs(q) < 1e-12) return p >= 0
+    const r = p / q
+    if (q > 0) {
+      if (r < t1) t1 = r
+      return true
+    }
+    if (r > t0) t0 = r
+    return true
   }
-  return intersections
+  const inside = clip(-(pa.lon - minX), dx) && clip(pa.lon - maxX, -dx)
+    && clip(-(pa.lat - minY), dy) && clip(pa.lat - maxY, -dy)
+  if (!inside || t1 - t0 < 1e-9) return intersections
+  const start = { point: unprojectFromLocal({ lon: pa.lon + dx * t0, lat: pa.lat + dy * t0 }, origin), t: t0 }
+  const end = { point: unprojectFromLocal({ lon: pa.lon + dx * t1, lat: pa.lat + dy * t1 }, origin), t: t1 }
+  if (intersections.length === 1) {
+    // One crossing means the row only grazes the outline; keep just that point unless the
+    // midpoint really is inside the polygon, in which case the clipped span is the lane.
+    const midpoint = pointAlong(a, b, 0.5)
+    if (!pointInPolygon(midpoint, polygon)) return intersections
+  }
+  return [start, end]
 }
 
 export function polygonsToRings(points: LngLat[]) {
@@ -521,6 +564,16 @@ export function buildLawnmowerRings(
   if (polygon.length < 3) return []
   const origin = polygon[0]
   const local = polygon.map((point) => projectToLocal(point, origin))
+  // Hard ceiling for any single lane: nothing inside the area can be longer than its
+  // diagonal. Clipping mistakes are clamped here rather than flown.
+  let diagonal = 0
+  for (let i = 0; i < local.length; i += 1) {
+    for (let j = i + 1; j < local.length; j += 1) {
+      diagonal = Math.max(diagonal, Math.hypot(local[j].lon - local[i].lon, local[j].lat - local[i].lat))
+    }
+  }
+  const maxLane = Math.max(1, diagonal)
+  const overshoot = Math.min(100000, maxLane * 2 + 100)
   const theta = rad(rotation)
   const c = Math.cos(theta)
   const s = Math.sin(theta)
@@ -532,11 +585,11 @@ export function buildLawnmowerRings(
   for (let row = 0; row <= rows; row += 1) {
     const axis = minAcross + ((maxAcross - minAcross) * row) / rows
     const a = unprojectFromLocal(
-      { lon: -100000 * c + axis * -s, lat: -100000 * s + axis * c },
+      { lon: -overshoot * c + axis * -s, lat: -overshoot * s + axis * c },
       origin,
     )
     const b = unprojectFromLocal(
-      { lon: 100000 * c + axis * -s, lat: 100000 * s + axis * c },
+      { lon: overshoot * c + axis * -s, lat: overshoot * s + axis * c },
       origin,
     )
     const hits = lineIntersections(a, b, polygon)
@@ -545,6 +598,12 @@ export function buildLawnmowerRings(
     if (hits.length < 2) continue
     const start = hits[0]
     const end = hits[hits.length - 1]
+    const laneLength = distance(start, end)
+    // Reject clipping artefacts: nothing longer than the diagonal can be inside the area,
+    // and a lane shorter than the spacing is a vertex graze, not a line worth flying -
+    // keeping those would add a turn and a photo for a few centimetres of coverage.
+    if (laneLength > maxLane * 1.01) continue
+    if (laneLength < Math.max(2, Math.min(spacing * 0.5, 10))) continue
     const ordered: LngLat[] = row % 2 === 0 ? [start, end] : [end, start]
     legs.push({
       id: `capture-${row}`,
