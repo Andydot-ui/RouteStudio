@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { LngLat, PlannerDefinition, PlannerDraft, PlannerResult } from '../lib/types'
 import { PLANNER_DEFS } from '../lib/planners'
+import { gcj02ToWgs84, wgs84ToGcj02 } from '../lib/coords'
 
 export type BaseMap = 'satellite' | 'streets'
 type MapCanvasProps = {
@@ -32,23 +33,24 @@ type MapState = {
 }
 
 type TileSource = { url: string; attribution: string; maxZoom: number; subdomains?: string[]; className?: string }
-type BaseMapSpec = { base: TileSource; overlay?: TileSource }
+// `datum` says which coordinate system the published tiles are drawn in. Routes are always
+// stored as WGS 84, so a GCJ-02 source needs the display conversion and the inverse on every
+// click; a WGS 84 source needs no conversion at all.
+type TileDatum = 'wgs84' | 'gcj02'
+type BaseMapSpec = { base: TileSource; overlay?: TileSource; datum: TileDatum }
 
-// Both base maps are published in the global WGS 84 / Web Mercator grid, the same datum a
-// drone's GPS reports. Picking a point on the map therefore yields its true coordinate with
-// no datum correction anywhere in the app, which is what makes exported routes land exactly
-// where they were drawn. AMap and the other Chinese providers shift their tiles into GCJ-02,
-// so every coordinate would have to be converted on the way in and back on the way out - a
-// chain that silently breaks the moment one formula is off.
+// Route values and exported KMZ files are always WGS 84, the datum a drone's GPS reports, so
+// a drawn point flies exactly where it was drawn. The street basemap is AMap: its tiles carry
+// the label density and contrast Chinese users expect, and the earlier OSM mirror was too
+// pale to read. AMap publishes GCJ-02 though - a 570 m north-east shift at this latitude - so
+// its tiles are converted for display only (see displayPoint/readPoint). Choosing a WGS 84
+// source instead would remove that conversion, but Esri's street and topo tiles return
+// "Map data not yet available" over China and the OSM mirror is the faint one being replaced.
 //
-// CARTO's free raster tiles now carry an "API KEY REQUIRED" watermark for anonymous use, so
-// nothing here points at basemaps.cartocdn.com. The satellite annotation overlay and the
-// street basemap both use the tile.openstreetmap.de mirror: it serves Chinese place and road
-// labels with no watermark and is CORS-enabled. Over imagery the same tiles are blended with
-// CSS `multiply`, so their pale background drops out and only the dark labels remain - the
-// free, key-less equivalent of a transparent label layer. Esri's own reference-label layer is
-// empty over China, which is why it is not used here.
+// CARTO's free raster tiles carry an "API KEY REQUIRED" watermark for anonymous use, so
+// nothing here points at basemaps.cartocdn.com.
 const ESRI_MAX_ZOOM = 19
+const AMAP_MAX_ZOOM = 18
 const OSM_DE_MAX_ZOOM = 18
 
 const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
@@ -58,6 +60,9 @@ const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
       attribution: '影像 © Esri, Maxar',
       maxZoom: ESRI_MAX_ZOOM,
     },
+    // Kept on the OSM mirror rather than AMap: AMap's annotation tiles are only reliably
+    // transparent at some zoom levels and turn into an opaque white wash over the imagery at
+    // others, which buried the photo. The OSM tiles blend predictably under `multiply`.
     overlay: {
       url: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
       subdomains: ['a', 'b', 'c'],
@@ -65,14 +70,16 @@ const BASE_LAYERS: Record<BaseMap, BaseMapSpec> = {
       maxZoom: OSM_DE_MAX_ZOOM,
       className: 'label-overlay',
     },
+    datum: 'wgs84',
   },
   streets: {
     base: {
-      url: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
-      subdomains: ['a', 'b', 'c'],
-      attribution: '街道 © OpenStreetMap 贡献者',
-      maxZoom: OSM_DE_MAX_ZOOM,
+      url: 'https://{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',
+      subdomains: ['wprd01', 'wprd02', 'wprd03', 'wprd04'],
+      attribution: '街道 © 高德地图',
+      maxZoom: AMAP_MAX_ZOOM,
     },
+    datum: 'gcj02',
   },
 }
 
@@ -101,8 +108,26 @@ const addBaseLayers = (map: L.Map, baseMap: BaseMap): BaseLayerStack => {
   return { base, label }
 }
 
-// The tiles and the route share one datum, so display needs no conversion at all.
-const displayPoint = (point: LngLat): L.LatLngTuple => [point[1], point[0]]
+// Route values are WGS 84. Display against a GCJ-02 tile needs the forward shift, and a click
+// on that tile needs the inverse. Both are identity for the WGS 84 sources, so the satellite
+// path is exact and unchanged.
+const datumOf = (baseMap: BaseMap): TileDatum => BASE_LAYERS[baseMap].datum
+
+const displayPoint = (point: LngLat, datum: TileDatum = 'wgs84'): L.LatLngTuple => {
+  if (datum !== 'gcj02') return [point[1], point[0]]
+  const [lon, lat] = wgs84ToGcj02(point[0], point[1])
+  return [lat, lon]
+}
+
+const readPoint = (latlng: L.LatLng, datum: TileDatum): LngLat => {
+  if (datum !== 'gcj02') return [latlng.lng, latlng.lat]
+  return gcj02ToWgs84(latlng.lng, latlng.lat)
+}
+
+// Datum currently painted on screen. Every overlay resolves through it, so switching the
+// basemap converts all of them at once instead of relying on each call site passing it.
+let activeDatum: TileDatum = 'wgs84'
+const toDisplay = (point: LngLat): L.LatLngTuple => displayPoint(point, activeDatum)
 
 const markerColor = (def: PlannerDefinition) => def.color
 
@@ -149,12 +174,15 @@ export function MapCanvas({
     const host = hostRef.current
     if (!host) return
     const initialCenter: LngLat = draftRef.current.input[0] ?? [113.662923, 34.830072]
+    // Seed the datum before anything is drawn: the first render below reads it through
+    // toDisplay, and the initial base map is whatever the caller asked for.
+    activeDatum = datumOf(baseMapRef.current)
     const map = L.map(host, {
       zoomControl: false,
       attributionControl: true,
       preferCanvas: true,
       closePopupOnClick: false,
-    }).setView(displayPoint(initialCenter), 17)
+    }).setView(toDisplay(initialCenter), 17)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
     L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map)
 
@@ -176,7 +204,7 @@ export function MapCanvas({
       state.drawLayer.clearLayers()
       if (!drawingRef.current) return
       const def = PLANNER_DEFS[0]
-      const placed = draftRef.current.input.map(displayPoint)
+      const placed = draftRef.current.input.map(toDisplay)
       const cursor = cursorRef.current
       const cursorPoint: L.LatLngTuple | null = cursor ? [cursor.lat, cursor.lng] : null
       const ring = cursorPoint && placed.length >= 2 ? [...placed, cursorPoint] : placed
@@ -226,7 +254,8 @@ export function MapCanvas({
 
     map.on('click', (event: L.LeafletMouseEvent) => {
       if (!drawingRef.current) return
-      callbacksRef.current.onAddPoint([event.latlng.lng, event.latlng.lat] as LngLat)
+      // The tile datum is what the user actually pointed at; the stored route is WGS 84.
+      callbacksRef.current.onAddPoint(readPoint(event.latlng, activeDatum))
     })
     map.on('dblclick', (event: L.LeafletMouseEvent) => {
       L.DomEvent.preventDefault(event.originalEvent)
@@ -281,12 +310,12 @@ export function MapCanvas({
     host.addEventListener('mouseup', stopPanning)
     host.addEventListener('mouseleave', stopPanning)
 
-    const initialCenterPoint = L.latLng(displayPoint(initialCenter))
+    const initialCenterPoint = L.latLng(toDisplay(initialCenter))
     const fitSavedRoute = () => {
       map.invalidateSize()
       const points = draftRef.current.input
       if (points.length > 1) {
-        map.fitBounds(L.latLngBounds(points.map(displayPoint)).pad(0.25), { animate: false })
+        map.fitBounds(L.latLngBounds(points.map(toDisplay)).pad(0.25), { animate: false })
       } else {
         map.setView(initialCenterPoint, 17, { animate: false })
       }
@@ -302,13 +331,29 @@ export function MapCanvas({
     }
   }, [])
 
+  // Switching basemaps can also switch datums (satellite is WGS 84, AMap is GCJ-02). The route
+  // is stored as WGS 84 either way, so every overlay has to be re-projected onto the new grid;
+  // bumping a counter re-runs the render effects below with the new activeDatum.
+  const [datumEpoch, setDatumEpoch] = useState(0)
+
   useEffect(() => {
     const state = stateRef.current
     if (!state || appliedBaseMapRef.current === baseMap) return
+    const previousDatum = appliedBaseMapRef.current ? datumOf(appliedBaseMapRef.current) : 'wgs84'
+    // Resolve what physical place is in the middle of the screen BEFORE changing the datum.
+    // The two tile sets are drawn 570 m apart at this latitude, so keeping the raw Leaflet
+    // centre would jump the view to a different neighbourhood on every basemap switch.
+    const physicalCentre = readPoint(state.map.getCenter(), previousDatum)
+    const zoom = state.map.getZoom()
     appliedBaseMapRef.current = baseMap
+    activeDatum = datumOf(baseMap)
     state.baseLayers.base.forEach((layer) => state.map.removeLayer(layer))
     if (state.baseLayers.label) state.map.removeLayer(state.baseLayers.label)
     state.baseLayers = addBaseLayers(state.map, baseMap)
+    if (previousDatum !== activeDatum) {
+      state.map.setView(toDisplay(physicalCentre), zoom, { animate: false })
+      setDatumEpoch((value) => value + 1)
+    }
   }, [baseMap])
 
   // The label overlay is its own tile layer so it can be switched off without touching
@@ -342,7 +387,7 @@ export function MapCanvas({
     if (drawing) return
     if (result.source.length > 2) {
       if (draft.kind === 'grid' || draft.kind === 'oblique') {
-        L.polygon(result.source.map(displayPoint), {
+        L.polygon(result.source.map(toDisplay), {
           color: def.color,
           weight: 2,
           fillColor: def.color,
@@ -351,7 +396,7 @@ export function MapCanvas({
           interactive: false,
         }).addTo(state.renderLayer)
       } else {
-        L.polyline(result.source.map(displayPoint), {
+        L.polyline(result.source.map(toDisplay), {
           color: def.color,
           weight: 2,
           opacity: 0.6,
@@ -361,7 +406,7 @@ export function MapCanvas({
       }
     }
     if (draft.kind === 'orbit' && draft.input[0]) {
-      L.circle(displayPoint(draft.input[0]), {
+      L.circle(toDisplay(draft.input[0]), {
         radius: result.area > 0 ? Math.sqrt(result.area / Math.PI) : draft.settings.orbitRadius,
         color: '#fff',
         weight: 1.5,
@@ -374,7 +419,7 @@ export function MapCanvas({
     }
     result.legs.forEach((leg, legIndex) => {
       if (leg.points.length > 1) {
-        const latlngs = leg.points.map(displayPoint)
+        const latlngs = leg.points.map(toDisplay)
         const isTransit = leg.kind === 'transit'
         const hue = (180 + legIndex * 29) % 360
         L.polyline(latlngs, {
@@ -401,7 +446,7 @@ export function MapCanvas({
       const isLast = index === result.waypoints.length - 1
       if (index % every !== 0 && !isLast) return
       const camera = showCameraViews && point.takePhoto ? '<div class="camera-view"></div>' : ''
-      L.marker(displayPoint([point.lon, point.lat]), {
+      L.marker(toDisplay([point.lon, point.lat]), {
         interactive: false,
         zIndexOffset: point.takePhoto ? 100 : 0,
         icon: L.divIcon({
@@ -412,12 +457,12 @@ export function MapCanvas({
         }),
       }).addTo(state.renderLayer)
     })
-  }, [draft.kind, draft.input, draft.settings.orbitRadius, result, showNumbers, showCamera, drawing])
+  }, [draft.kind, draft.input, draft.settings.orbitRadius, result, showNumbers, showCamera, drawing, datumEpoch])
 
   useEffect(() => {
     if (!drawing) cursorRef.current = null
     drawOverlayRef.current()
-  }, [draft.input, draft.kind, drawing])
+  }, [draft.input, draft.kind, drawing, datumEpoch])
 
   useEffect(() => {
     const state = stateRef.current
@@ -431,7 +476,7 @@ export function MapCanvas({
     const def = PLANNER_DEFS[0]
     draft.input.forEach((point, index) => {
       const selected = draft.selectedIndex === index
-      const marker = L.marker(displayPoint(point), {
+      const marker = L.marker(toDisplay(point), {
         draggable: true,
         zIndexOffset: selected ? 500 : 200,
         icon: L.divIcon({
@@ -487,7 +532,7 @@ export function MapCanvas({
     return () => {
       window.removeEventListener('blur', releaseDrag)
     }
-  }, [draft.input, draft.kind, draft.selectedIndex])
+  }, [draft.input, draft.kind, draft.selectedIndex, datumEpoch])
 
   // The waypoint preview ring follows the stepper index and eases the viewport so the
   // selected point is always on screen when stepping through the route.
@@ -497,7 +542,7 @@ export function MapCanvas({
     state.previewLayer.clearLayers()
     const point = previewIndex === null ? undefined : result.waypoints[previewIndex]
     if (!point) return
-    L.marker(displayPoint([point.lon, point.lat]), {
+    L.marker(toDisplay([point.lon, point.lat]), {
       interactive: false,
       zIndexOffset: 900,
       icon: L.divIcon({
@@ -507,10 +552,10 @@ export function MapCanvas({
         iconAnchor: [23, 23],
       }),
     }).addTo(state.previewLayer)
-    if (!state.map.getBounds().contains(displayPoint([point.lon, point.lat]))) {
-      state.map.panTo(displayPoint([point.lon, point.lat]), { animate: true, duration: 0.35 })
+    if (!state.map.getBounds().contains(toDisplay([point.lon, point.lat]))) {
+      state.map.panTo(toDisplay([point.lon, point.lat]), { animate: true, duration: 0.35 })
     }
-  }, [previewIndex, result])
+  }, [previewIndex, result, datumEpoch])
 
   return <div ref={hostRef} className={`map-host ${drawing ? 'is-drawing' : ''}`} aria-label="航线规划地图" />
 }
