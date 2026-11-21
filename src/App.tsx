@@ -101,7 +101,22 @@ function App() {
   const undo = () => { if (historyIndex <= 0) return; const next = historyIndex - 1; setHistoryIndex(next); setDraft(cloneDraft(history[next])) }
   const redo = () => { if (historyIndex >= history.length - 1) return; const next = historyIndex + 1; setHistoryIndex(next); setDraft(cloneDraft(history[next])) }
   const setSelected = (index: number | null) => setDraft((current) => ({ ...current, selectedIndex: index }))
-  const addPoint = (point: LngLat) => { const now = Date.now(); if (now - lastDrawTime.current < 90) return; lastDrawTime.current = now; commit({ ...draft, importedWaypoints: undefined, input: [...draft.input, point], selectedIndex: draft.input.length }) }
+  // A double-click emits two `click` events, and both used to become control points stacked
+  // on the same spot. The old guard was a 90 ms time window, which also swallowed a click
+  // that landed soon after any other input change - including the click that ends a control
+  // point drag - so the next corner appeared to be silently ignored. Duplicates are now
+  // rejected by position: two clicks within a couple of screen pixels are the same gesture,
+  // and a click anywhere else is always honoured, however quickly it follows a drag.
+  const addPoint = (point: LngLat) => {
+    const previous = draft.input[draft.input.length - 1]
+    if (previous) {
+      const near = Math.abs(previous[0] - point[0]) < 1e-6 && Math.abs(previous[1] - point[1]) < 1e-6
+      const now = Date.now()
+      if (near && now - lastDrawTime.current < 400) return
+    }
+    lastDrawTime.current = Date.now()
+    commit({ ...draft, importedWaypoints: undefined, input: [...draft.input, point], selectedIndex: draft.input.length })
+  }
   const setInput = (points: LngLat[]) => commit({ ...draft, importedWaypoints: undefined, input: points })
   const removeInput = (index: number) => commit({ ...draft, importedWaypoints: undefined, input: draft.input.filter((_, itemIndex) => itemIndex !== index), selectedIndex: null })
   const undoDrawing = () => { if (historyIndex > 0) undo(); else postToast('没有可撤销的绘制操作', 'info') }

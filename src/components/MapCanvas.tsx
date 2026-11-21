@@ -132,6 +132,10 @@ export function MapCanvas({
   const appliedBaseMapRef = useRef<BaseMap | null>(null)
   const cursorRef = useRef<L.LatLng | null>(null)
   const drawOverlayRef = useRef<() => void>(() => undefined)
+  // Index of the control point currently being dragged, or null. While set, the marker
+  // layer is not rebuilt and map panning stays disabled.
+  const draggingMarkerRef = useRef<number | null>(null)
+  const editMarkersRef = useRef<L.Marker[]>([])
 
   useEffect(() => {
     callbacksRef.current = { onAddPoint, onSetInput, onSelectInput, onLocate, onFinishPolygon, onMapReady }
@@ -329,6 +333,10 @@ export function MapCanvas({
   useEffect(() => {
     const state = stateRef.current
     if (!state) return
+    // While a control point is being dragged the route geometry is about to change anyway,
+    // so rebuilding thousands of markers on every intermediate frame only costs pointer
+    // smoothness. The drag itself still moves the marker; the route redraws on drop.
+    if (draggingMarkerRef.current !== null) return
     state.renderLayer.clearLayers()
     const def = PLANNER_DEFS[0]
     if (drawing) return
@@ -380,17 +388,25 @@ export function MapCanvas({
         }).addTo(state.renderLayer)
       }
     })
-    const every = Math.max(1, Math.ceil(result.waypoints.length / 180))
+    // Markers are DOM elements, so a 4000-waypoint mission would put 4000 nodes in the
+    // marker pane and every drag re-layout costs hundreds of milliseconds. Decimating keeps
+    // the shape readable: the photo points that actually define the grid are sampled down to
+    // a display budget instead of being drawn in full. Previously the decimation was a no-op
+    // for orthophoto missions because every capture point has takePhoto set, so the "keep
+    // all photos" clause defeated `every` entirely.
+    const markerBudget = 400
+    const every = Math.max(1, Math.ceil(result.waypoints.length / markerBudget))
     const showCameraViews = showCamera && result.waypoints.length <= 80
     result.waypoints.forEach((point, index) => {
-      if (index % every !== 0 && !point.takePhoto) return
+      const isLast = index === result.waypoints.length - 1
+      if (index % every !== 0 && !isLast) return
       const camera = showCameraViews && point.takePhoto ? '<div class="camera-view"></div>' : ''
       L.marker(displayPoint([point.lon, point.lat]), {
         interactive: false,
         zIndexOffset: point.takePhoto ? 100 : 0,
         icon: L.divIcon({
           className: 'route-marker-shell',
-          html: `${camera}<span class="route-marker" style="--marker-color:${point.takePhoto ? markerColor(def) : '#64748b'}">${showNumbers ? index + 1 : ''}</span>`,
+          html: `${camera}<span class="route-marker" style="--marker-color:${point.takePhoto ? markerColor(def) : '#64748b'}">${showNumbers && result.waypoints.length <= markerBudget ? index + 1 : ''}</span>`,
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         }),
@@ -406,6 +422,11 @@ export function MapCanvas({
   useEffect(() => {
     const state = stateRef.current
     if (!state) return
+    // Rebuilding the markers while one of them is being dragged destroys the element under
+    // the pointer, which is what made a drag freeze half way: the click that started the
+    // gesture selects the point, that selection re-runs this effect, and the marker the user
+    // is holding is replaced. The rebuild is deferred until the gesture ends.
+    if (draggingMarkerRef.current) return
     state.editLayer.clearLayers()
     const def = PLANNER_DEFS[0]
     draft.input.forEach((point, index) => {
@@ -420,13 +441,24 @@ export function MapCanvas({
           iconAnchor: [17, 17],
         }),
       })
+      // Flagged on dragstart only. Setting it on mousedown would leave it stuck for a plain
+      // click (no drag means no dragend to clear it), which would swallow the selection and
+      // stop the marker layer from ever rebuilding again.
+      marker.on('dragstart', () => {
+        draggingMarkerRef.current = index
+        state.map.dragging.disable()
+      })
       marker.on('click', (event) => {
+        // A drag ends with a click on the same element; only treat taps as selection.
         L.DomEvent.stopPropagation(event.originalEvent)
+        if (draggingMarkerRef.current !== null) return
         callbacksRef.current.onSelectInput(index)
         callbacksRef.current.onLocate(point)
       })
       marker.on('dragend', () => {
         const next = marker.getLatLng()
+        draggingMarkerRef.current = null
+        state.map.dragging.enable()
         const moved = [next.lng, next.lat] as LngLat
         const updated = draftRef.current.input.map((item, itemIndex) =>
           itemIndex === index ? (moved as LngLat) : item,
@@ -440,6 +472,21 @@ export function MapCanvas({
       )
       marker.addTo(state.editLayer)
     })
+    // Keep a map from index to marker so the drag path can redraw the rubber band live.
+    editMarkersRef.current = state.editLayer.getLayers() as L.Marker[]
+    // Safety net: if a drag is interrupted (window blur, Esc, an unmounting layer) Leaflet may
+    // never fire dragend, and a stuck flag would freeze both panning and the marker rebuilds.
+    // mouseup is deliberately not used here - it fires before Leaflet's dragend and would
+    // clear the flag too early, re-enabling the rebuild mid-gesture.
+    const releaseDrag = () => {
+      if (draggingMarkerRef.current === null) return
+      draggingMarkerRef.current = null
+      state.map.dragging.enable()
+    }
+    window.addEventListener('blur', releaseDrag)
+    return () => {
+      window.removeEventListener('blur', releaseDrag)
+    }
   }, [draft.input, draft.kind, draft.selectedIndex])
 
   // The waypoint preview ring follows the stepper index and eases the viewport so the
